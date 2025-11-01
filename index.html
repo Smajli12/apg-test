@@ -1,1 +1,117 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <title>APG Test (MOCK GPT)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    .wrap { max-width: 900px; margin: 40px auto; font-family: Arial, sans-serif; }
+    .slot { border: 1px dashed #aaa; margin: 20px 0; display: flex; align-items:center; justify-content:center; background:#f9f9f9; }
+    #div-gpt-ad-top-728x90 { width:728px; height:90px; }
+    #div-gpt-ad-rail-300x600 { width:300px; height:600px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>APG Test (MOCK GPT)</h1>
+    <p>Sandbox bez pravog GAM-a; generišemo GPT događaje da testiramo PRO+ tag i API.</p>
+
+    <div id="div-gpt-ad-top-728x90" class="slot">TOP 728x90</div>
+    <div style="height:1200px"></div>
+    <div id="div-gpt-ad-rail-300x600" class="slot">RAIL 300x600 (scroll do ovde)</div>
+  </div>
+
+  <!-- MOCK GPT koji emulira osnovne GPT evente -->
+  <script>
+    (function(){
+      const listeners = {};
+      window.googletag = {
+        apiReady: true,
+        cmd: [],
+        pubads(){
+          return {
+            getSlots(){
+              return [
+                {
+                  getSlotElementId(){ return 'div-gpt-ad-top-728x90'; },
+                  getAdUnitPath(){ return '/99999999/site/top'; },
+                  getSizes(){ return [[728,90]]; }
+                },
+                {
+                  getSlotElementId(){ return 'div-gpt-ad-rail-300x600'; },
+                  getAdUnitPath(){ return '/99999999/site/rail'; },
+                  getSizes(){ return [[300,600]]; }
+                }
+              ];
+            },
+            addEventListener(name, cb){
+              (listeners[name] = listeners[name] || []).push(cb);
+              if(name==='slotRequested'){
+                setTimeout(()=>cb({ slot: {
+                  getSlotElementId(){ return 'div-gpt-ad-top-728x90'; },
+                  getAdUnitPath(){ return '/99999999/site/top'; }
+                }}), 200);
+              }
+              if(name==='slotResponseReceived'){
+                setTimeout(()=>cb({ slot: {
+                  getSlotElementId(){ return 'div-gpt-ad-top-728x90'; },
+                  getAdUnitPath(){ return '/99999999/site/top'; }
+                }}), 350);
+              }
+              if(name==='slotRenderEnded'){
+                setTimeout(()=>cb({
+                  slot: {
+                    getSlotElementId(){ return 'div-gpt-ad-top-728x90'; },
+                    getAdUnitPath(){ return '/99999999/site/top'; }
+                  },
+                  isEmpty: true,
+                  size: null,
+                  creativeId: null,
+                  lineItemId: null
+                }), 600);
+              }
+            }
+          };
+        }
+      };
+      setTimeout(()=> (window.googletag.cmd||[]).forEach(fn=>{ try{ fn(); }catch(e){} }), 0);
+    })();
+  </script>
+
+  <!-- TVOJ PRO+ TAG -->
+  <script>
+  (function () {
+    const CONFIG = {
+      clientId: 'client-001',
+      allowedDomain: 'smajli12.github.io',
+      expectedNetworkId: '12345678',
+      apiEndpoint: 'https://apg-api.onrender.com/ingest',
+      siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJzaXRlSWQiOiJzaXRlLTAwMSIsImlhdCI6MTc2MjAxNTc1NCwiZXhwIjoxNzkzNTUxNzU0fQ.NaX52zJOzpETtBU6iaLA_Fcil-riFd7CVge_z4fj6rU',
+      version: 'pro-plus-1.0.0',
+      consentTimeoutMs: 800,
+      sendTimeoutMs: 4000,
+      alwaysSend: true
+    };
+    if (!window.location.hostname.includes(CONFIG.allowedDomain)) return;
+    const state = { pageViewId: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`, gptLoaded: false, gptEvents: [], viewportSeen: new Set(), newDomSlots: [], routeChanged: false, sentHashes: new Set(), t0: performance.now() };
+    function nowISO(){ return new Date().toISOString(); }
+    function shaLite(str){ let h=0; for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i); h|=0;} return 'h'+(h>>>0).toString(16); }
+    function getConsent(t){return new Promise(r=>{const res={gdprApplies:null,hasConsent:null,source:'none'};if(typeof __tcfapi!=='function')return r(res);let d=false;const to=setTimeout(()=>{if(!d)r(res)},t||CONFIG.consentTimeoutMs);try{__tcfapi('getTCData',2,function(tc,ok){if(d)return;d=true;clearTimeout(to);if(ok&&tc){res.gdprApplies=!!tc.gdprApplies;res.hasConsent=!!tc.tcString&&tc.tcString.length>0;res.source='tcf'}r(res)})}catch(e){r(res)}})}
+    function detectAdblock(){try{const b=document.createElement('div');b.className='adsbox';b.style.position='absolute';b.style.height='10px';document.body.appendChild(b);const blocked=getComputedStyle(b).display==='none'||b.clientHeight===0;document.body.removeChild(b);return blocked}catch(e){return null}}
+    function hookGptEvents(){if(!(window.googletag&&googletag.apiReady))return;state.gptLoaded=true;const p=googletag.pubads();function wrap(n){return(e)=>{const s=e&&e.slot;const id=s&&s.getSlotElementId?s.getSlotElementId():null;const a=s&&s.getAdUnitPath?s.getAdUnitPath():'';const nid=a?(a.split('/')[1]||''):'';const ev={name:n,id,adUnitPath:a,networkId:nid,ts:nowISO()};if(n==='slotRenderEnded'){ev.isEmpty=!!e.isEmpty;ev.renderedSize=e.size||null;ev.creativeId=e.creativeId||null;ev.lineItemId=e.lineItemId||null;ev.latencyMs=Math.round(performance.now()-state.t0)}state.gptEvents.push(ev)}}p.addEventListener('slotRequested',wrap('slotRequested'));p.addEventListener('slotResponseReceived',wrap('slotResponseReceived'));p.addEventListener('slotRenderEnded',wrap('slotRenderEnded'));p.addEventListener('impressionViewable',wrap('impressionViewable'));p.addEventListener('slotOnload',wrap('slotOnload'))}
+    function ensureGptHook(){if(window.googletag&&googletag.apiReady){hookGptEvents()}else{(window.googletag=window.googletag||{cmd:[]}).cmd.push(()=>hookGptEvents())}}
+    function observeViewport(ids){if(!('IntersectionObserver'in window))return;const io=new IntersectionObserver((es)=>{es.forEach(en=>{if(en.isIntersecting&&en.target.id)state.viewportSeen.add(en.target.id)})},{threshold:[0,0.25,0.5]});ids.forEach(id=>{const el=document.getElementById(id);if(el)io.observe(el)})}
+    function collectRequestedSizes(){try{if(!(window.googletag&&googletag.apiReady))return{};const m={};googletag.pubads().getSlots().forEach(s=>{const id=s.getSlotElementId();const sz=s.getSizes?s.getSizes():[];m[id]=(Array.isArray(sz)?sz:[]).map(x=>{if(Array.isArray(x))return x;if(x&&typeof x.getWidth==='function')return[x.getWidth(),x.getHeight()];return null}).filter(Boolean)});return m}catch(e){return{}}}
+    function hookSpa(){const mo=new MutationObserver(muts=>{const a=[];muts.forEach(m=>{(m.addedNodes||[]).forEach(n=>{if(n.nodeType===1){const list=n.querySelectorAll?n.querySelectorAll('[id^="div-gpt-ad"]'):[];list.forEach(el=>a.push(el.id))}})});if(a.length)state.newDomSlots=state.newDomSlots.concat(a)});mo.observe(document.documentElement,{childList:true,subtree:true});const ps=history.pushState;history.pushState=function(){const r=ps.apply(this,arguments);state.routeChanged=true;return r};window.addEventListener('popstate',()=>{state.routeChanged=true})}
+    function collectDom(){const els=Array.from(document.querySelectorAll('[id^="div-gpt-ad"]'));const ids=els.map(el=>el.id);const adSlotSizes=[];const emptySlots=[];els.forEach(el=>{const r=el.getBoundingClientRect();adSlotSizes.push({id:el.id,width:Math.round(r.width),height:Math.round(r.height)});if(!el.innerHTML||!el.innerHTML.trim())emptySlots.push(el.id)});return{ids,adSlotSizes,emptySlots}}
+    function collectGpt(ids){const out={gptLoaded:false,registeredSlots:[],notRegisteredInGPT:[],wrongNetworkSlots:[],requestedSizes:{}};if(window.googletag&&googletag.apiReady){out.gptLoaded=true;const slots=googletag.pubads().getSlots();const reg=slots.map(s=>s.getSlotElementId());out.registeredSlots=reg;out.notRegisteredInGPT=ids.filter(id=>!reg.includes(id));out.wrongNetworkSlots=slots.filter(s=>{const p=s.getAdUnitPath()||'';const nid=(p.split('/')[1]||'');return nid!==CONFIG.expectedNetworkId}).map(s=>({id:s.getSlotElementId(),adUnitPath:s.getAdUnitPath()||''}));out.requestedSizes=collectRequestedSizes()}return out}
+    function send(payload){const body=JSON.stringify(payload);const hash=shaLite(body);if(state.sentHashes.has(hash))return;state.sentHashes.add(hash);const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),CONFIG.sendTimeoutMs);fetch(CONFIG.apiEndpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${CONFIG.siteToken}`,'X-APG-Tag-Version':CONFIG.version},body,keepalive:true,signal:ctrl.signal}).catch(()=>{setTimeout(()=>{fetch(CONFIG.apiEndpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${CONFIG.siteToken}`,'X-APG-Tag-Version':CONFIG.version},body,keepalive:true}).catch(()=>{})},1200)}).finally(()=>clearTimeout(t))}
+    function hasIssues(r){return(!r.gptLoaded||r.notRegisteredInGPT.length>0||r.wrongNetworkSlots.length>0||r.emptySlots.length>0)}
+    function buildAndSend(consent){const{ids,adSlotSizes,emptySlots}=collectDom();observeViewport(ids);const gpt=collectGpt(ids);const payload={clientId:CONFIG.clientId,pageViewId:state.pageViewId,site:location.href,host:location.hostname,timestamp:nowISO(),tagVersion:CONFIG.version,gptLoaded:gpt.gptLoaded,domSlots:ids,registeredSlots:gpt.registeredSlots,notRegisteredInGPT:gpt.notRegisteredInGPT,wrongNetworkSlots:gpt.wrongNetworkSlots,requestedSizes:gpt.requestedSizes,adSlotSizes,emptySlots,slotsInViewport:Array.from(state.viewportSeen),screenResolution:`${window.screen.width}x${window.screen.height}`,userAgent:navigator.userAgent,language:navigator.language||navigator.userLanguage||'',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'',consent:consent||{gdprApplies:null,hasConsent:null,source:'none'},adBlockLikely:detectAdblock(),gptEvents:state.gptEvents.slice(-300),routeChanged:state.routeChanged,newDomSlots:state.newDomSlots};if(CONFIG.alwaysSend||hasIssues(payload))send(payload)}
+    function init(){ensureGptHook();hookSpa();window.addEventListener('load',function(){getConsent(CONFIG.consentTimeoutMs).then((c)=>{setTimeout(()=>buildAndSend(c),300)})});window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')buildAndSend()});window.addEventListener('beforeunload',()=>buildAndSend())}
+    try{init()}catch(e){}
+  })();
+  </script>
+</body>
+</html>
 
