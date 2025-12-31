@@ -18,7 +18,7 @@
     .warn{color:#c70}
   </style>
 
-  <!-- ===================== APG TAG (OPTION B) ===================== -->
+  <!-- ===================== APG TAG (Mock GPT compatible) ===================== -->
   <script>
   (function () {
     const CONFIG = {
@@ -27,15 +27,15 @@
       expectedNetworkId: '12345678',
       apiEndpoint: 'https://apg-api.onrender.com/ingest',
       siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcxOTU0NTYsImV4cCI6MTc5ODczMTQ1Nn0.-JSEf0OWS5qPG3UzxtyWDdZ28SbZ75G3ChnwutY8icQ',
-      version: 'start-1.0.3',
+      version: 'start-1.0.4-mockflush',
 
       sendTimeoutMs: 4000,
       dedupeTtlMs: 24 * 60 * 60 * 1000, // 24h
       postLoadDelayMs: 3500,
 
-      domSlotSelector: 'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
+      domSlotSelector: 'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id^="ad-slot"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
 
-      // ✅ OPTION B (test page): don't send gpt_not_loaded at all
+      // ✅ keep TRUE for now (your request)
       disableGptNotLoaded: true,
 
       revenueModel: {
@@ -52,6 +52,7 @@
       }
     };
 
+    // Strict domain check
     const host = location.hostname;
     const okDomain = (host === CONFIG.allowedDomain) || host.endsWith('.' + CONFIG.allowedDomain);
     if (!okDomain) return;
@@ -174,6 +175,8 @@
         if (!(window.googletag && googletag.apiReady)) return;
 
         const pubads = googletag.pubads();
+        if (!pubads || typeof pubads.addEventListener !== 'function') return;
+
         if (pubads.__apgStartBound) return;
         pubads.__apgStartBound = true;
 
@@ -209,6 +212,21 @@
       });
     }
 
+    // ✅ MOCK GPT FIX: run queued googletag.cmd callbacks manually
+    function flushGoogletagCmdQueue() {
+      try {
+        const gt = window.googletag;
+        if (!gt || !Array.isArray(gt.cmd) || gt.cmd.length === 0) return;
+
+        const q = gt.cmd.slice(0);
+        gt.cmd.length = 0;
+
+        q.forEach(fn => {
+          try { if (typeof fn === 'function') fn(); } catch (_) {}
+        });
+      } catch (_) {}
+    }
+
     function collectDomSlotIds() {
       try {
         return Array.from(document.querySelectorAll(CONFIG.domSlotSelector))
@@ -221,7 +239,6 @@
 
     function postLoadScan() {
       if (!window.googletag || !googletag.apiReady) {
-        // OPTION B: skip gpt_not_loaded on this test page
         if (!CONFIG.disableGptNotLoaded) {
           sendIssue({ issueType:'gpt_not_loaded' });
         }
@@ -230,8 +247,8 @@
 
       try {
         const domIds = collectDomSlotIds();
-        const slots = googletag.pubads().getSlots();
-        const gptIds = slots.map(s => s.getSlotElementId()).filter(Boolean);
+        const slots = (googletag.pubads && googletag.pubads().getSlots) ? googletag.pubads().getSlots() : [];
+        const gptIds = (slots || []).map(s => (s.getSlotElementId && s.getSlotElementId()) || '').filter(Boolean);
 
         if (domIds && domIds.length) {
           domIds.forEach(function (id) {
@@ -241,7 +258,7 @@
           });
         }
 
-        if (CONFIG.expectedNetworkId) {
+        if (CONFIG.expectedNetworkId && slots && slots.length) {
           slots.forEach(function (s) {
             const adUnitPath = (s.getAdUnitPath && s.getAdUnitPath()) || '';
             if (!adUnitPath) return;
@@ -258,8 +275,21 @@
 
     function init() {
       attachGptListeners();
+
+      // If mock was enabled before tag ran
+      flushGoogletagCmdQueue();
+
+      // When mock GPT gets enabled by the UI
+      window.addEventListener('apg:mock-gpt-enabled', function () {
+        flushGoogletagCmdQueue();
+      });
+
       window.addEventListener('load', function () {
-        setTimeout(postLoadScan, CONFIG.postLoadDelayMs);
+        setTimeout(function () {
+          // flush right before scan too
+          flushGoogletagCmdQueue();
+          postLoadScan();
+        }, CONFIG.postLoadDelayMs);
       });
     }
 
@@ -333,10 +363,5 @@
 
   <script src="./assets/mock-gpt.js"></script>
   <script src="./assets/app.js"></script>
-
-  <!--
-    Install GTM on this page when hosted (GitHub Pages) or locally.
-    Your APG tag should be configured in GTM and will run on this page.
-  -->
 </body>
 </html>
