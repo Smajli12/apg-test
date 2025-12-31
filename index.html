@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>APG Tag Test Page (Mock GPT)</title>
+
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;line-height:1.35}
     code,pre{background:#f4f4f6;padding:2px 6px;border-radius:6px}
@@ -17,9 +18,85 @@
     .ok{color:#0a7}
     .warn{color:#c70}
   </style>
+
+  <!-- ================= APG TAG (OVDE IDE) ================= -->
+  <script>
+  (function () {
+    const CONFIG = {
+      clientId: 'client-001',
+      allowedDomain: 'smajli12.github.io',
+      expectedNetworkId: '12345678',
+      apiEndpoint: 'https://apg-api.onrender.com/ingest',
+      siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcxOTU0NTYsImV4cCI6MTc5ODczMTQ1Nn0.-JSEf0OWS5qPG3UzxtyWDdZ28SbZ75G3ChnwutY8icQ',
+      version: 'start-1.0.3',
+
+      sendTimeoutMs: 4000,
+      dedupeTtlMs: 24 * 60 * 60 * 1000,
+      postLoadDelayMs: 3500,
+
+      domSlotSelector: 'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]'
+    };
+
+    const host = location.hostname;
+    const okDomain = (host === CONFIG.allowedDomain) || host.endsWith('.' + CONFIG.allowedDomain);
+    if (!okDomain) return;
+
+    function nowISO(){ return new Date().toISOString(); }
+
+    function issueKey(p){
+      return 'apg_' + [CONFIG.clientId,p.issueType,p.pageUrl,p.slotId||'',p.adUnitPath||'']
+        .join('|').slice(0,220);
+    }
+
+    function shouldSend(p){
+      try{
+        const k=issueKey(p);
+        const prev=localStorage.getItem(k);
+        if(prev && Date.now()-Number(prev)<CONFIG.dedupeTtlMs) return false;
+        localStorage.setItem(k,String(Date.now()));
+        return true;
+      }catch{ return true; }
+    }
+
+    async function sendIssue(issue){
+      const payload={
+        clientId:CONFIG.clientId,
+        host:location.hostname,
+        pageUrl:location.href,
+        timestamp:nowISO(),
+        tagVersion:CONFIG.version,
+        userAgent:navigator.userAgent,
+        ...issue
+      };
+      if(!shouldSend(payload)) return;
+
+      try{
+        await fetch(CONFIG.apiEndpoint,{
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'Authorization':`Bearer ${CONFIG.siteToken}`,
+            'X-APG-Tag-Version':CONFIG.version
+          },
+          body:JSON.stringify(payload),
+          keepalive:true
+        });
+      }catch{}
+    }
+
+    // minimal sanity ping
+    window.addEventListener('load',()=>{
+      setTimeout(()=>sendIssue({issueType:'gpt_not_loaded',severity:'high'}),1200);
+    });
+  })();
+  </script>
+  <!-- ================= END APG TAG ================= -->
+
 </head>
 <body>
+
   <h1>APG Tag Test Page</h1>
+
   <p class="small">
     This page is designed to test your GTM tag without a real GAM setup.
     It includes <b>mock GPT</b> that can trigger the same events your tag listens for.
@@ -27,9 +104,6 @@
 
   <div class="box">
     <h2>1) Mock GPT Controls</h2>
-    <p class="small">
-      Use these to simulate each issue type and confirm you see requests in Hoppscotch and rows in your Sheet.
-    </p>
     <div class="row">
       <button id="btn-enable-mock">Enable Mock GPT (apiReady=true)</button>
       <button id="btn-disable-gpt">Disable GPT (simulate gpt_not_loaded)</button>
@@ -42,50 +116,20 @@
       <button id="btn-empty">Trigger: empty_response</button>
       <button id="btn-unexpected-size">Trigger: unexpected_size</button>
     </div>
-
-    <p class="small">
-      Tip: open DevTools Console to see local logs from the mock. Your tag should still POST to your API endpoint.
-    </p>
   </div>
 
   <div class="box">
     <h2>2) Ad Slots on the Page</h2>
-    <p class="small">
-      These <code>&lt;div id="..."&gt;</code> elements are what your tag's <code>domSlotSelector</code> detects.
-    </p>
-
     <div class="slots">
       <div class="slot" id="div-gpt-ad-test-1">div-gpt-ad-test-1</div>
       <div class="slot" id="div-gpt-ad-test-2">div-gpt-ad-test-2</div>
       <div class="slot" id="ad-slot-hero">ad-slot-hero</div>
       <div class="slot" id="gpt-ad-footer">gpt-ad-footer</div>
     </div>
-
-    <p class="small warn">
-      Important: Your GTM tag must be installed on this page and its <code>allowedDomain</code> must match the host.
-    </p>
-  </div>
-
-  <div class="box">
-    <h2>3) Expected Results</h2>
-    <ul>
-      <li><code>gpt_not_loaded</code> — click “Disable GPT”, then refresh the page.</li>
-      <li><code>slot_not_registered</code> — enable mock GPT, then click “Trigger: slot_not_registered”.</li>
-      <li><code>wrong_network</code> — enable mock GPT, then click “Trigger: wrong_network”.</li>
-      <li><code>empty_response</code> — enable mock GPT, then click “Trigger: empty_response”.</li>
-      <li><code>unexpected_size</code> — enable mock GPT, then click “Trigger: unexpected_size”.</li>
-    </ul>
-    <p class="small">
-      Your tag dedupes events for 24h by default; if you don't see repeat events, clear localStorage for this site.
-    </p>
   </div>
 
   <script src="./assets/mock-gpt.js"></script>
   <script src="./assets/app.js"></script>
 
-  <!--
-    Install GTM on this page when hosted (GitHub Pages) or locally.
-    Your APG tag should be configured in GTM and will run on this page.
-  -->
 </body>
 </html>
