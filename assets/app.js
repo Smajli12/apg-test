@@ -1,35 +1,78 @@
 (function () {
-  const $ = (id) => document.getElementById(id);
+  console.log('[apg-test] Loaded. Install GTM + APG tag on this page to test end-to-end.');
 
-  function info(msg) { console.log('[apg-test]', msg); }
+  function $(id) { return document.getElementById(id); }
 
-  $('btn-enable-mock').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.enableMockGpt();
-    info('Mock GPT enabled. Refresh page once so the APG tag can bind listeners if needed.');
-  });
+  const btnEnable = $('btn-enable-mock');
+  const btnDisable = $('btn-disable-gpt');
 
-  $('btn-disable-gpt').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.disableGpt();
-    info('GPT disabled. Refresh page to trigger gpt_not_loaded.');
-  });
+  const btnSlotNotRegistered = $('btn-slot-not-registered');
+  const btnWrongNetwork = $('btn-wrong-network');
+  const btnEmpty = $('btn-empty');
+  const btnUnexpected = $('btn-unexpected-size');
 
-  $('btn-slot-not-registered').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.triggerSlotNotRegistered();
-    info('If your APG tag post-load scan already ran, refresh page to re-run scan (or clear dedupe).');
-  });
+  if (btnEnable) {
+    btnEnable.addEventListener('click', function () {
+      if (window.__mockGPT && typeof window.__mockGPT.enable === 'function') {
+        window.__mockGPT.enable();
+      } else {
+        // Fallback: try calling global function if mock exposes it differently
+        if (typeof window.enableMockGPT === 'function') window.enableMockGPT();
+      }
 
-  $('btn-wrong-network').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.triggerWrongNetwork();
-    info('Wrong-network slot injected. Refresh page so APG post-load scan catches it (or clear dedupe).');
-  });
+      console.log('[apg-test] Mock GPT enabled. Refresh page once so the APG tag can bind listeners if needed.');
 
-  $('btn-empty').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.triggerEmpty();
-  });
+      // ✅ CRUCIAL: tell APG tag to flush googletag.cmd queue and bind listeners NOW
+      window.dispatchEvent(new Event('apg:mock-gpt-enabled'));
+    });
+  }
 
-  $('btn-unexpected-size').addEventListener('click', () => {
-    window.__apgMock && window.__apgMock.triggerUnexpectedSize();
-  });
+  if (btnDisable) {
+    btnDisable.addEventListener('click', function () {
+      if (window.__mockGPT && typeof window.__mockGPT.disable === 'function') {
+        window.__mockGPT.disable();
+      } else {
+        if (typeof window.disableMockGPT === 'function') window.disableMockGPT();
+      }
+      console.log('[apg-test] Mock GPT disabled.');
+    });
+  }
 
-  info('Loaded. Install GTM + APG tag on this page to test end-to-end.');
+  function safeCall(fnName) {
+    try {
+      if (window.__mockGPT && typeof window.__mockGPT[fnName] === 'function') {
+        window.__mockGPT[fnName]();
+        return;
+      }
+      // fallback global functions (if mock exposes them)
+      const g = window[fnName];
+      if (typeof g === 'function') g();
+    } catch (e) {
+      console.warn('[apg-test] trigger failed', fnName, e);
+    }
+  }
+
+  if (btnSlotNotRegistered) {
+    btnSlotNotRegistered.addEventListener('click', function () {
+      safeCall('triggerSlotNotRegistered');
+    });
+  }
+
+  if (btnWrongNetwork) {
+    btnWrongNetwork.addEventListener('click', function () {
+      safeCall('triggerWrongNetwork');
+    });
+  }
+
+  if (btnEmpty) {
+    btnEmpty.addEventListener('click', function () {
+      safeCall('triggerEmpty');
+    });
+  }
+
+  if (btnUnexpected) {
+    btnUnexpected.addEventListener('click', function () {
+      safeCall('triggerUnexpectedSize');
+    });
+  }
 })();
