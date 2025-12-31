@@ -17,6 +17,254 @@
     .ok{color:#0a7}
     .warn{color:#c70}
   </style>
+
+  <!-- ===================== APG (GTM) TAG START ===================== -->
+  <script>
+  (function () {
+    const CONFIG = {
+      clientId: 'client-001',
+      allowedDomain: 'smajli12.github.io',
+      expectedNetworkId: '12345678',
+      apiEndpoint: 'https://apg-api.onrender.com/ingest',
+      siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcxOTU0NTYsImV4cCI6MTc5ODczMTQ1Nn0.-JSEf0OWS5qPG3UzxtyWDdZ28SbZ75G3ChnwutY8icQ',
+      version: 'start-1.0.3',
+
+      sendTimeoutMs: 4000,
+      dedupeTtlMs: 24 * 60 * 60 * 1000, // 24h
+      postLoadDelayMs: 3500,
+
+      domSlotSelector: 'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
+
+      // Conservative revenue-at-risk model
+      revenueModel: {
+        currency: 'USD',
+        assumedRpm: 1.0,
+        estimationWindowHours: 24,
+        assumedImpressionsPerIssue: {
+          gpt_not_loaded: 80000,
+          wrong_network: 60000,
+          slot_not_registered: 25000,
+          empty_response: 12000,
+          unexpected_size: 8000
+        }
+      }
+    };
+
+    // Strict domain check
+    const host = location.hostname;
+    const okDomain = (host === CONFIG.allowedDomain) || host.endsWith('.' + CONFIG.allowedDomain);
+    if (!okDomain) return;
+
+    function nowISO(){ return new Date().toISOString(); }
+
+    function issueKey(payload) {
+      const parts = [
+        CONFIG.clientId,
+        payload.issueType,
+        payload.pageUrl,
+        payload.slotId || '',
+        payload.adUnitPath || ''
+      ];
+      return 'apg_' + parts.join('|').slice(0, 220);
+    }
+
+    function shouldSend(payload) {
+      try {
+        const k = issueKey(payload);
+        const prev = localStorage.getItem(k);
+        if (prev) {
+          const ts = Number(prev);
+          if (!Number.isNaN(ts) && (Date.now() - ts) < CONFIG.dedupeTtlMs) return false;
+        }
+        localStorage.setItem(k, String(Date.now()));
+        return true;
+      } catch (_) {
+        return true;
+      }
+    }
+
+    function severityFor(type) {
+      if (type === 'gpt_not_loaded') return 'high';
+      if (type === 'wrong_network') return 'high';
+      if (type === 'slot_not_registered') return 'high';
+      if (type === 'empty_response') return 'medium';
+      if (type === 'unexpected_size') return 'medium';
+      return 'low';
+    }
+
+    function estimateRevenueAtRisk(issueType) {
+      try {
+        const m = CONFIG.revenueModel || {};
+        const rpm = Number(m.assumedRpm);
+        const imps = Number((m.assumedImpressionsPerIssue || {})[issueType] || 0);
+
+        const safeRpm = (!Number.isFinite(rpm) || rpm < 0) ? 0 : rpm;
+        const safeImps = (!Number.isFinite(imps) || imps < 0) ? 0 : imps;
+
+        const est = (safeImps / 1000) * safeRpm;
+
+        return {
+          estimationCurrency: m.currency || 'USD',
+          estimationWindowHours: m.estimationWindowHours || 24,
+          assumedRpm: safeRpm,
+          assumedImpressionsAtRisk: safeImps,
+          estimatedRevenueAtRisk: Math.round(est * 100) / 100,
+          estimationMethod: 'conservative_impressions_x_rpm'
+        };
+      } catch (_) {
+        return {
+          estimationCurrency: 'USD',
+          estimationWindowHours: 24,
+          assumedRpm: 0,
+          assumedImpressionsAtRisk: 0,
+          estimatedRevenueAtRisk: 0,
+          estimationMethod: 'conservative_impressions_x_rpm'
+        };
+      }
+    }
+
+    function basePayload() {
+      return {
+        clientId: CONFIG.clientId,
+        host: location.hostname,
+        pageUrl: location.href,
+        timestamp: nowISO(),
+        tagVersion: CONFIG.version,
+        userAgent: navigator.userAgent
+      };
+    }
+
+    async function sendIssue(issue) {
+      if (!CONFIG.apiEndpoint) return;
+
+      const payload = Object.assign(
+        basePayload(),
+        issue,
+        { severity: severityFor(issue.issueType) },
+        estimateRevenueAtRisk(issue.issueType)
+      );
+
+      if (!shouldSend(payload)) return;
+
+      // ---- FIXED AbortController handling ----
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const t = ctrl ? setTimeout(() => ctrl.abort(), CONFIG.sendTimeoutMs) : null;
+
+      try {
+        await fetch(CONFIG.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type':'application/json',
+            'Authorization': `Bearer ${CONFIG.siteToken}`,
+            'X-APG-Tag-Version': CONFIG.version
+          },
+          body: JSON.stringify(payload),
+          keepalive: true,
+          signal: ctrl ? ctrl.signal : undefined
+        });
+      } catch (_) {
+        // never break page
+      } finally {
+        if (t) clearTimeout(t);
+      }
+    }
+
+    function attachGptListeners() {
+      (window.googletag = window.googletag || { cmd: [] }).cmd.push(function () {
+        if (!(window.googletag && googletag.apiReady)) return;
+
+        const pubads = googletag.pubads();
+        if (pubads.__apgStartBound) return;
+        pubads.__apgStartBound = true;
+
+        pubads.addEventListener('slotRenderEnded', function (e) {
+          try {
+            const slot = e && e.slot;
+            const slotId = slot && slot.getSlotElementId ? slot.getSlotElementId() : '';
+            const adUnitPath = slot && slot.getAdUnitPath ? slot.getAdUnitPath() : '';
+
+            if (e.isEmpty === true) {
+              sendIssue({ issueType:'empty_response', slotId, adUnitPath });
+              return;
+            }
+
+            if (e.size && Array.isArray(e.size) && slot && slot.getSizes) {
+              const rendered = e.size[0] + 'x' + e.size[1];
+              const defined = (slot.getSizes() || []).map(s => {
+                try { return s.getWidth() + 'x' + s.getHeight(); } catch (_) { return null; }
+              }).filter(Boolean);
+
+              if (defined.length && defined.indexOf(rendered) === -1) {
+                sendIssue({
+                  issueType:'unexpected_size',
+                  slotId,
+                  adUnitPath,
+                  renderedSize: rendered,
+                  definedSizes: defined.slice(0, 20)
+                });
+              }
+            }
+          } catch (_) {}
+        });
+      });
+    }
+
+    function collectDomSlotIds() {
+      try {
+        return Array.from(document.querySelectorAll(CONFIG.domSlotSelector))
+          .map(el => el && el.id)
+          .filter(Boolean);
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function postLoadScan() {
+      if (!window.googletag || !googletag.apiReady) {
+        sendIssue({ issueType:'gpt_not_loaded' });
+        return;
+      }
+
+      try {
+        const domIds = collectDomSlotIds();
+        const slots = googletag.pubads().getSlots();
+        const gptIds = slots.map(s => s.getSlotElementId()).filter(Boolean);
+
+        if (domIds && domIds.length) {
+          domIds.forEach(function (id) {
+            if (gptIds.indexOf(id) === -1) {
+              sendIssue({ issueType:'slot_not_registered', slotId: id });
+            }
+          });
+        }
+
+        if (CONFIG.expectedNetworkId) {
+          slots.forEach(function (s) {
+            const adUnitPath = (s.getAdUnitPath && s.getAdUnitPath()) || '';
+            if (!adUnitPath) return;
+
+            const nid = (adUnitPath.split('/')[1] || '');
+            if (nid && nid !== CONFIG.expectedNetworkId) {
+              const slotId = (s.getSlotElementId && s.getSlotElementId()) || '';
+              sendIssue({ issueType:'wrong_network', slotId, adUnitPath, networkId: nid });
+            }
+          });
+        }
+      } catch (_) {}
+    }
+
+    function init() {
+      attachGptListeners();
+      window.addEventListener('load', function () {
+        setTimeout(postLoadScan, CONFIG.postLoadDelayMs);
+      });
+    }
+
+    try { init(); } catch (_) {}
+  })();
+  </script>
+  <!-- ===================== APG (GTM) TAG END ===================== -->
+
 </head>
 <body>
   <h1>APG Tag Test Page</h1>
