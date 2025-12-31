@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APG Test Page (GPT Stub)</title>
+  <title>APG Test Page (GPT Stub + Wrong Network Always)</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;line-height:1.35}
     code,pre{background:#f4f4f6;padding:2px 6px;border-radius:6px}
@@ -14,18 +14,16 @@
     .slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px}
     .slot{border:1px dashed #bbb;border-radius:12px;min-height:90px;display:flex;align-items:center;justify-content:center;color:#666;padding:10px;text-align:center}
     .small{font-size:12px;color:#666}
-    .ok{color:#0a7}
     .warn{color:#c70}
     .bad{color:#c00}
-    #status{white-space:pre-wrap}
   </style>
 
   <!-- =========================================================
        0) GPT STUB (must load BEFORE APG tag)
+       - includes a WRONG NETWORK slot ALWAYS (networkId 99999999)
        ========================================================= -->
   <script>
   (function () {
-    // Simple in-memory pubads bus
     const listeners = { slotRenderEnded: [] };
 
     function makeSlot({ id, adUnitPath, sizes }) {
@@ -33,7 +31,6 @@
         getSlotElementId() { return id; },
         getAdUnitPath() { return adUnitPath; },
         getSizes() {
-          // mimic GPT size objects with getWidth/getHeight
           return (sizes || []).map(([w,h]) => ({
             getWidth(){ return w; },
             getHeight(){ return h; }
@@ -42,7 +39,10 @@
       };
     }
 
-    // 3 registered slots in GPT
+    // ✅ Registered slots in GPT stub
+    // - 2 normal slots with expected network 12345678
+    // - 1 wrong-network slot with network 99999999 (ALWAYS present)
+    // - 1 footer slot
     const slots = [
       makeSlot({
         id: "div-gpt-ad-test-1",
@@ -53,6 +53,12 @@
         id: "div-gpt-ad-test-2",
         adUnitPath: "/12345678/homepage/sidebar",
         sizes: [[300,250],[300,600]]
+      }),
+      // ✅ ALWAYS wrong network (expectedNetworkId in your tag is 12345678)
+      makeSlot({
+        id: "slot-wrong-network",
+        adUnitPath: "/99999999/homepage/bad-network",
+        sizes: [[300,250]]
       }),
       makeSlot({
         id: "gpt-ad-footer",
@@ -68,20 +74,15 @@
       },
       getSlots() { return slots; },
 
-      // helper for stub UI
       __emitSlotRenderEnded(payload) {
         const cbs = (listeners.slotRenderEnded || []).slice(0);
-        cbs.forEach(cb => {
-          try { cb(payload); } catch (e) {}
-        });
+        cbs.forEach(cb => { try { cb(payload); } catch(e){} });
       }
     };
 
-    // Create googletag stub
     const gt = window.googletag || {};
     gt.apiReady = true;
 
-    // cmd queue – execute immediately in stub
     gt.cmd = gt.cmd || [];
     const origPush = gt.cmd.push.bind(gt.cmd);
     gt.cmd.push = function (fn) {
@@ -91,67 +92,34 @@
     };
 
     gt.pubads = function () { return pubadsObj; };
-
     window.googletag = gt;
 
-    // Expose helper to page buttons
+    // Expose helpers for buttons
     window.__gptStub = {
-      enable() { window.googletag.apiReady = true; },
-      disable() { window.googletag.apiReady = false; },
+      enable() { window.googletag.apiReady = true; console.log("[gpt-stub] apiReady=true"); },
+      disable() { window.googletag.apiReady = false; console.log("[gpt-stub] apiReady=false"); },
       emitEmpty() {
-        const slot = slots[0];
-        pubadsObj.__emitSlotRenderEnded({
-          slot,
-          isEmpty: true
-        });
+        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-1");
+        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: true });
       },
       emitUnexpectedSize() {
-        const slot = slots[1];
-        pubadsObj.__emitSlotRenderEnded({
-          slot,
-          isEmpty: false,
-          size: [160, 600] // rendered not in defined sizes for this slot
-        });
+        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-2");
+        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: false, size: [160, 600] }); // not defined => unexpected_size
       },
       emitOkSize() {
-        const slot = slots[1];
-        pubadsObj.__emitSlotRenderEnded({
-          slot,
-          isEmpty: false,
-          size: [300, 250] // valid
-        });
-      },
-      emitWrongNetwork() {
-        // create a slot whose adUnitPath has wrong network id
-        const badSlot = makeSlot({
-          id: "slot-wrong-network",
-          adUnitPath: "/99999999/homepage/bad-network",
-          sizes: [[300,250]]
-        });
-        // also register it so postLoadScan sees it in getSlots()
-        slots.push(badSlot);
-        pubadsObj.__emitSlotRenderEnded({
-          slot: badSlot,
-          isEmpty: false,
-          size: [300, 250]
-        });
-      },
-      resetWrongNetwork() {
-        // remove the injected wrong-network slot if present
-        for (let i = slots.length - 1; i >= 0; i--) {
-          if (slots[i] && slots[i].getSlotElementId && slots[i].getSlotElementId() === "slot-wrong-network") {
-            slots.splice(i, 1);
-          }
-        }
+        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-2");
+        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: false, size: [300, 250] }); // ok => no issue expected
       }
     };
 
-    console.log("[gpt-stub] ready, apiReady=true, slots:", slots.map(s => s.getSlotElementId()));
+    console.log("[gpt-stub] ready. Registered slots:", slots.map(s => s.getSlotElementId()));
+    console.log("[gpt-stub] NOTE: wrong network slot is ALWAYS present: slot-wrong-network -> /99999999/...");
   })();
   </script>
 
   <!-- =========================================================
-       1) YOUR REAL APG TAG (as-is, with minimal config filled)
+       1) YOUR REAL APG TAG (as-is)
+       - IMPORTANT: paste your NEW site token
        ========================================================= -->
   <script>
   (function () {
@@ -160,7 +128,7 @@
       allowedDomain: 'smajli12.github.io',
       expectedNetworkId: '12345678',
       apiEndpoint: 'https://apg-api.onrender.com/ingest',
-      siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
+      siteToken: 'PASTE_NEW_TOKEN_HERE',
       version: 'start-1.0.3',
 
       sendTimeoutMs: 4000,
@@ -295,7 +263,6 @@
           signal: ctrl ? ctrl.signal : undefined
         });
       } catch (_) {
-        // never break page
       } finally {
         if (t) clearTimeout(t);
       }
@@ -395,54 +362,48 @@
     try { init(); } catch (_) {}
   })();
   </script>
-  <!-- ========================================================= -->
-
 </head>
 
 <body>
   <h1>APG Test Page (GPT Stub)</h1>
   <p class="small">
-    Ovo je “Phase 2” test: tvoj real APG tag sluša <code>slotRenderEnded</code>, ali GPT je stubovan.
+    Ova verzija ima <b>wrong network slot stalno</b> (slot-wrong-network) pa će tvoj tag poslati
+    <code>wrong_network</code> automatski kroz <code>postLoadScan()</code> ~3.5s nakon load-a.
   </p>
 
   <div class="box">
     <h2>Slots in DOM</h2>
     <p class="small">
-      DOM slotovi (1 je namerno “ne-registriran” u GPT stub-u).
+      DOM slotovi (1 je namerno “ne-registriran” da dobijes <code>slot_not_registered</code>).
     </p>
     <div class="slots">
-      <div class="slot" id="div-gpt-ad-test-1">Registered slot<br><span class="small">div-gpt-ad-test-1</span></div>
-      <div class="slot" id="div-gpt-ad-test-2">Registered slot<br><span class="small">div-gpt-ad-test-2</span></div>
-      <div class="slot" id="gpt-ad-footer">Registered slot<br><span class="small">gpt-ad-footer</span></div>
-      <div class="slot" id="ad-slot-not-registered">NOT registered in GPT<br><span class="small">ad-slot-not-registered</span></div>
+      <div class="slot" id="div-gpt-ad-test-1">Registered<br><span class="small">div-gpt-ad-test-1</span></div>
+      <div class="slot" id="div-gpt-ad-test-2">Registered<br><span class="small">div-gpt-ad-test-2</span></div>
+      <div class="slot" id="slot-wrong-network"><span class="bad">WRONG NETWORK</span><br><span class="small">slot-wrong-network</span></div>
+      <div class="slot" id="gpt-ad-footer">Registered<br><span class="small">gpt-ad-footer</span></div>
+
+      <!-- This one is NOT in GPT stub getSlots() => should trigger slot_not_registered -->
+      <div class="slot" id="ad-slot-not-registered"><span class="warn">NOT registered in GPT</span><br><span class="small">ad-slot-not-registered</span></div>
     </div>
+
     <p class="small warn">
-      Ovaj <code>ad-slot-not-registered</code> treba da okine <code>slot_not_registered</code> na postLoadScan.
+      Očekuj: posle ~3.5s od load-a -> <code>slot_not_registered</code> (za ad-slot-not-registered)
+      i <code>wrong_network</code> (za slot-wrong-network).
     </p>
   </div>
 
   <div class="box">
-    <h2>Trigger slotRenderEnded events (from stub)</h2>
-    <div class="row">
-      <button onclick="__gptStub.enable(); console.log('stub apiReady=true');">Enable GPT (apiReady=true)</button>
-      <button onclick="__gptStub.disable(); console.log('stub apiReady=false');">Disable GPT (apiReady=false)</button>
-    </div>
-
+    <h2>Trigger slotRenderEnded (listener test)</h2>
     <div class="row">
       <button onclick="__gptStub.emitEmpty();">Emit: empty_response</button>
       <button onclick="__gptStub.emitUnexpectedSize();">Emit: unexpected_size</button>
-      <button onclick="__gptStub.emitOkSize();">Emit: ok render (no event expected)</button>
-      <button onclick="__gptStub.emitWrongNetwork();">Inject+Emit: wrong_network</button>
-      <button onclick="__gptStub.resetWrongNetwork(); console.log('wrong_network slot removed');">Reset wrong_network slot</button>
+      <button onclick="__gptStub.emitOkSize();">Emit: ok render (no issue expected)</button>
     </div>
 
     <p class="small">
-      Otvori DevTools → Network → filter <code>ingest</code>.  
-      Klikni dugme → treba da vidiš POST /ingest i red u Sheet-u.
-    </p>
-
-    <p class="small warn">
-      Ako klikćeš isto više puta, dedupe (24h) može blokirati. Rešenje: otvori stranicu sa <code>?t=123</code> ili obriši localStorage.
+      DevTools → Network → filter <code>ingest</code>.  
+      Ako ne vidiš ponovo event kad klikćeš više puta, to je zbog dedupe (24h).  
+      Rešenje: otvori stranicu sa <code>?t=neki_novi_broj</code> ili obriši localStorage za sajt.
     </p>
   </div>
 
