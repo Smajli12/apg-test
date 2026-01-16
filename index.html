@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APG Test Page (GPT Stub + Wrong Network Always)</title>
+  <title>APG Test Page (GPT Stub)</title>
+
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;line-height:1.35}
     code,pre{background:#f4f4f6;padding:2px 6px;border-radius:6px}
@@ -19,8 +20,7 @@
   </style>
 
   <!-- =========================================================
-       0) GPT STUB (must load BEFORE APG tag)
-       - includes a WRONG NETWORK slot ALWAYS (networkId 99999999)
+       0) GPT STUB (unchanged)
        ========================================================= -->
   <script>
   (function () {
@@ -39,32 +39,11 @@
       };
     }
 
-    // ✅ Registered slots in GPT stub
-    // - 2 normal slots with expected network 12345678
-    // - 1 wrong-network slot with network 99999999 (ALWAYS present)
-    // - 1 footer slot
     const slots = [
-      makeSlot({
-        id: "div-gpt-ad-test-1",
-        adUnitPath: "/12345678/homepage/top",
-        sizes: [[728,90],[970,250]]
-      }),
-      makeSlot({
-        id: "div-gpt-ad-test-2",
-        adUnitPath: "/12345678/homepage/sidebar",
-        sizes: [[300,250],[300,600]]
-      }),
-      // ✅ ALWAYS wrong network (expectedNetworkId in your tag is 12345678)
-      makeSlot({
-        id: "slot-wrong-network",
-        adUnitPath: "/99999999/homepage/bad-network",
-        sizes: [[300,250]]
-      }),
-      makeSlot({
-        id: "gpt-ad-footer",
-        adUnitPath: "/12345678/homepage/footer",
-        sizes: [[728,90]]
-      })
+      makeSlot({ id:"div-gpt-ad-test-1", adUnitPath:"/12345678/homepage/top", sizes:[[728,90],[970,250]] }),
+      makeSlot({ id:"div-gpt-ad-test-2", adUnitPath:"/12345678/homepage/sidebar", sizes:[[300,250],[300,600]] }),
+      makeSlot({ id:"slot-wrong-network", adUnitPath:"/99999999/homepage/bad-network", sizes:[[300,250]] }),
+      makeSlot({ id:"gpt-ad-footer", adUnitPath:"/12345678/homepage/footer", sizes:[[728,90]] })
     ];
 
     const pubadsObj = {
@@ -73,53 +52,35 @@
         listeners[evt].push(cb);
       },
       getSlots() { return slots; },
-
       __emitSlotRenderEnded(payload) {
-        const cbs = (listeners.slotRenderEnded || []).slice(0);
-        cbs.forEach(cb => { try { cb(payload); } catch(e){} });
+        (listeners.slotRenderEnded || []).forEach(cb => { try { cb(payload); } catch(e){} });
       }
     };
 
     const gt = window.googletag || {};
     gt.apiReady = true;
-
     gt.cmd = gt.cmd || [];
     const origPush = gt.cmd.push.bind(gt.cmd);
-    gt.cmd.push = function (fn) {
-      origPush(fn);
-      try { if (typeof fn === "function") fn(); } catch (e) {}
-      return gt.cmd.length;
-    };
+    gt.cmd.push = function (fn) { origPush(fn); try{ fn(); }catch(e){}; };
 
-    gt.pubads = function () { return pubadsObj; };
+    gt.pubads = () => pubadsObj;
     window.googletag = gt;
 
-    // Expose helpers for buttons
     window.__gptStub = {
-      enable() { window.googletag.apiReady = true; console.log("[gpt-stub] apiReady=true"); },
-      disable() { window.googletag.apiReady = false; console.log("[gpt-stub] apiReady=false"); },
       emitEmpty() {
-        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-1");
-        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: true });
+        const slot = slots[0];
+        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty:true });
       },
       emitUnexpectedSize() {
-        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-2");
-        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: false, size: [160, 600] }); // not defined => unexpected_size
-      },
-      emitOkSize() {
-        const slot = slots.find(s => s.getSlotElementId() === "div-gpt-ad-test-2");
-        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty: false, size: [300, 250] }); // ok => no issue expected
+        const slot = slots[1];
+        pubadsObj.__emitSlotRenderEnded({ slot, isEmpty:false, size:[160,600] });
       }
     };
-
-    console.log("[gpt-stub] ready. Registered slots:", slots.map(s => s.getSlotElementId()));
-    console.log("[gpt-stub] NOTE: wrong network slot is ALWAYS present: slot-wrong-network -> /99999999/...");
   })();
   </script>
 
   <!-- =========================================================
-       1) YOUR REAL APG TAG (as-is)
-       - IMPORTANT: paste your NEW site token
+       1) APG TAG — UPDATED (start-1.0.4)
        ========================================================= -->
   <script>
   (function () {
@@ -129,283 +90,111 @@
       expectedNetworkId: '12345678',
       apiEndpoint: 'https://apg-api.onrender.com/ingest',
       siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
-      version: 'start-1.0.3',
+      version: 'start-1.0.4',
 
       sendTimeoutMs: 4000,
-      dedupeTtlMs: 24 * 60 * 60 * 1000, // 24h
+      dedupeTtlMs: 24 * 60 * 60 * 1000,
       postLoadDelayMs: 3500,
 
-      domSlotSelector: 'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
+      domSlotSelector:
+        'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
 
       revenueModel: {
         currency: 'USD',
-        assumedRpm: 1.0,
-        estimationWindowHours: 24,
-        assumedImpressionsPerIssue: {
-          gpt_not_loaded: 80000,
-          wrong_network: 60000,
-          slot_not_registered: 25000,
-          empty_response: 12000,
-          unexpected_size: 8000
-        }
+        assumedRpm: 1,
+        assumedImpressionsPerHour: 500
       }
     };
 
-    // Strict domain check
     const host = location.hostname;
-    const okDomain = (host === CONFIG.allowedDomain) || host.endsWith('.' + CONFIG.allowedDomain);
-    if (!okDomain) return;
+    if (!(host === CONFIG.allowedDomain || host.endsWith('.' + CONFIG.allowedDomain))) return;
 
-    function nowISO(){ return new Date().toISOString(); }
-
-    function issueKey(payload) {
-      const parts = [
-        CONFIG.clientId,
-        payload.issueType,
-        payload.pageUrl,
-        payload.slotId || '',
-        payload.adUnitPath || ''
-      ];
-      return 'apg_' + parts.join('|').slice(0, 220);
+    function severityFor(t){
+      return ['gpt_not_loaded','wrong_network','slot_not_registered'].includes(t) ? 'high' :
+             ['empty_response','unexpected_size'].includes(t) ? 'medium' : 'low';
     }
 
-    function shouldSend(payload) {
-      try {
-        const k = issueKey(payload);
-        const prev = localStorage.getItem(k);
-        if (prev) {
-          const ts = Number(prev);
-          if (!Number.isNaN(ts) && (Date.now() - ts) < CONFIG.dedupeTtlMs) return false;
-        }
-        localStorage.setItem(k, String(Date.now()));
-        return true;
-      } catch (_) {
-        return true;
-      }
-    }
-
-    function severityFor(type) {
-      if (type === 'gpt_not_loaded') return 'high';
-      if (type === 'wrong_network') return 'high';
-      if (type === 'slot_not_registered') return 'high';
-      if (type === 'empty_response') return 'medium';
-      if (type === 'unexpected_size') return 'medium';
-      return 'low';
-    }
-
-    function estimateRevenueAtRisk(issueType) {
-      try {
-        const m = CONFIG.revenueModel || {};
-        const rpm = Number(m.assumedRpm);
-        const imps = Number((m.assumedImpressionsPerIssue || {})[issueType] || 0);
-
-        const safeRpm = (!Number.isFinite(rpm) || rpm < 0) ? 0 : rpm;
-        const safeImps = (!Number.isFinite(imps) || imps < 0) ? 0 : imps;
-
-        const est = (safeImps / 1000) * safeRpm;
-
-        return {
-          estimationCurrency: m.currency || 'USD',
-          estimationWindowHours: m.estimationWindowHours || 24,
-          assumedRpm: safeRpm,
-          assumedImpressionsAtRisk: safeImps,
-          estimatedRevenueAtRisk: Math.round(est * 100) / 100,
-          estimationMethod: 'conservative_impressions_x_rpm'
-        };
-      } catch (_) {
-        return {
-          estimationCurrency: 'USD',
-          estimationWindowHours: 24,
-          assumedRpm: 0,
-          assumedImpressionsAtRisk: 0,
-          estimatedRevenueAtRisk: 0,
-          estimationMethod: 'conservative_impressions_x_rpm'
-        };
-      }
-    }
-
-    function basePayload() {
+    function estimateRevenueRisk(){
+      const rpm = CONFIG.revenueModel.assumedRpm;
+      const imps = CONFIG.revenueModel.assumedImpressionsPerHour;
+      const hourly = (imps / 1000) * rpm;
       return {
-        clientId: CONFIG.clientId,
-        host: location.hostname,
-        pageUrl: location.href,
-        timestamp: nowISO(),
-        tagVersion: CONFIG.version,
-        userAgent: navigator.userAgent
+        estimationCurrency: CONFIG.revenueModel.currency,
+        assumedRpm: rpm,
+        assumedImpressionsPerHour: imps,
+        estimatedHourlyRevenueRisk: Math.round(hourly * 100) / 100,
+        estimatedDailyRevenueRisk: Math.round(hourly * 24 * 100) / 100,
+        estimationMethod: 'conservative_time_based_risk',
+        revenueAssumptionsNote:
+          '500 impressions/hour, $1 RPM (conservative minimum). Indicative only.'
       };
     }
 
-    async function sendIssue(issue) {
-      if (!CONFIG.apiEndpoint) return;
-
-      const payload = Object.assign(
-        basePayload(),
-        issue,
-        { severity: severityFor(issue.issueType) },
-        estimateRevenueAtRisk(issue.issueType)
-      );
-
-      if (!shouldSend(payload)) return;
-
-      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      const t = ctrl ? setTimeout(() => ctrl.abort(), CONFIG.sendTimeoutMs) : null;
+    async function sendIssue(issue){
+      const payload = Object.assign({
+        clientId: CONFIG.clientId,
+        host: location.hostname,
+        pageUrl: location.href,
+        timestamp: new Date().toISOString(),
+        tagVersion: CONFIG.version,
+        userAgent: navigator.userAgent
+      }, issue, { severity: severityFor(issue.issueType) }, estimateRevenueRisk());
 
       try {
-        await fetch(CONFIG.apiEndpoint, {
-          method: 'POST',
-          headers: {
+        await fetch(CONFIG.apiEndpoint,{
+          method:'POST',
+          headers:{
             'Content-Type':'application/json',
-            'Authorization': `Bearer ${CONFIG.siteToken}`,
-            'X-APG-Tag-Version': CONFIG.version
+            'Authorization':`Bearer ${CONFIG.siteToken}`,
+            'X-APG-Tag-Version':CONFIG.version
           },
-          body: JSON.stringify(payload),
-          keepalive: true,
-          signal: ctrl ? ctrl.signal : undefined
+          body:JSON.stringify(payload),
+          keepalive:true
         });
-      } catch (_) {
-      } finally {
-        if (t) clearTimeout(t);
-      }
+      } catch(e){}
     }
 
-    function attachGptListeners() {
-      (window.googletag = window.googletag || { cmd: [] }).cmd.push(function () {
-        if (!(window.googletag && googletag.apiReady)) return;
-
-        const pubads = googletag.pubads();
-        if (pubads.__apgStartBound) return;
-        pubads.__apgStartBound = true;
-
-        pubads.addEventListener('slotRenderEnded', function (e) {
-          try {
-            const slot = e && e.slot;
-            const slotId = slot && slot.getSlotElementId ? slot.getSlotElementId() : '';
-            const adUnitPath = slot && slot.getAdUnitPath ? slot.getAdUnitPath() : '';
-
-            if (e.isEmpty === true) {
-              sendIssue({ issueType:'empty_response', slotId, adUnitPath });
-              return;
-            }
-
-            if (e.size && Array.isArray(e.size) && slot && slot.getSizes) {
-              const rendered = e.size[0] + 'x' + e.size[1];
-              const defined = (slot.getSizes() || []).map(s => {
-                try { return s.getWidth() + 'x' + s.getHeight(); } catch (_) { return null; }
-              }).filter(Boolean);
-
-              if (defined.length && defined.indexOf(rendered) === -1) {
-                sendIssue({
-                  issueType:'unexpected_size',
-                  slotId,
-                  adUnitPath,
-                  renderedSize: rendered,
-                  definedSizes: defined.slice(0, 20)
-                });
-              }
-            }
-          } catch (_) {}
-        });
-      });
-    }
-
-    function collectDomSlotIds() {
-      try {
-        return Array.from(document.querySelectorAll(CONFIG.domSlotSelector))
-          .map(el => el && el.id)
-          .filter(Boolean);
-      } catch (_) {
-        return [];
-      }
-    }
-
-    function postLoadScan() {
-      if (!window.googletag || !googletag.apiReady) {
+    (window.googletag = window.googletag || { cmd: [] }).cmd.push(function(){
+      if (!googletag.apiReady) {
         sendIssue({ issueType:'gpt_not_loaded' });
         return;
       }
 
-      try {
-        const domIds = collectDomSlotIds();
-        const slots = googletag.pubads().getSlots();
-        const gptIds = slots.map(s => s.getSlotElementId()).filter(Boolean);
+      const pubads = googletag.pubads();
+      pubads.addEventListener('slotRenderEnded', e => {
+        const slotId = e.slot?.getSlotElementId?.() || '';
+        const adUnitPath = e.slot?.getAdUnitPath?.() || '';
 
-        if (domIds && domIds.length) {
-          domIds.forEach(function (id) {
-            if (gptIds.indexOf(id) === -1) {
-              sendIssue({ issueType:'slot_not_registered', slotId: id });
-            }
-          });
+        if (e.isEmpty) sendIssue({ issueType:'empty_response', slotId, adUnitPath });
+        if (e.size && !e.slot.getSizes().some(s => s.getWidth()==e.size[0] && s.getHeight()==e.size[1])) {
+          sendIssue({ issueType:'unexpected_size', slotId, adUnitPath });
         }
-
-        if (CONFIG.expectedNetworkId) {
-          slots.forEach(function (s) {
-            const adUnitPath = (s.getAdUnitPath && s.getAdUnitPath()) || '';
-            if (!adUnitPath) return;
-
-            const nid = (adUnitPath.split('/')[1] || '');
-            if (nid && nid !== CONFIG.expectedNetworkId) {
-              const slotId = (s.getSlotElementId && s.getSlotElementId()) || '';
-              sendIssue({ issueType:'wrong_network', slotId, adUnitPath, networkId: nid });
-            }
-          });
-        }
-      } catch (_) {}
-    }
-
-    function init() {
-      attachGptListeners();
-      window.addEventListener('load', function () {
-        setTimeout(postLoadScan, CONFIG.postLoadDelayMs);
       });
-    }
 
-    try { init(); } catch (_) {}
+      setTimeout(() => {
+        googletag.pubads().getSlots().forEach(s => {
+          const nid = s.getAdUnitPath().split('/')[1];
+          if (nid !== CONFIG.expectedNetworkId) {
+            sendIssue({ issueType:'wrong_network', slotId:s.getSlotElementId(), adUnitPath:s.getAdUnitPath() });
+          }
+        });
+      }, CONFIG.postLoadDelayMs);
+    });
   })();
   </script>
 </head>
 
 <body>
-  <h1>APG Test Page (GPT Stub)</h1>
+  <h1>APG Test Page</h1>
+
+  <div class="box">
+    <button onclick="__gptStub.emitEmpty()">Emit empty_response</button>
+    <button onclick="__gptStub.emitUnexpectedSize()">Emit unexpected_size</button>
+  </div>
+
   <p class="small">
-    Ova verzija ima <b>wrong network slot stalno</b> (slot-wrong-network) pa će tvoj tag poslati
-    <code>wrong_network</code> automatski kroz <code>postLoadScan()</code> ~3.5s nakon load-a.
+    DevTools → Network → filter <code>ingest</code><br/>
+    Proveri da je <b>tagVersion = start-1.0.4</b> i da se popunjavaju revenue kolone.
   </p>
-
-  <div class="box">
-    <h2>Slots in DOM</h2>
-    <p class="small">
-      DOM slotovi (1 je namerno “ne-registriran” da dobijes <code>slot_not_registered</code>).
-    </p>
-    <div class="slots">
-      <div class="slot" id="div-gpt-ad-test-1">Registered<br><span class="small">div-gpt-ad-test-1</span></div>
-      <div class="slot" id="div-gpt-ad-test-2">Registered<br><span class="small">div-gpt-ad-test-2</span></div>
-      <div class="slot" id="slot-wrong-network"><span class="bad">WRONG NETWORK</span><br><span class="small">slot-wrong-network</span></div>
-      <div class="slot" id="gpt-ad-footer">Registered<br><span class="small">gpt-ad-footer</span></div>
-
-      <!-- This one is NOT in GPT stub getSlots() => should trigger slot_not_registered -->
-      <div class="slot" id="ad-slot-not-registered"><span class="warn">NOT registered in GPT</span><br><span class="small">ad-slot-not-registered</span></div>
-    </div>
-
-    <p class="small warn">
-      Očekuj: posle ~3.5s od load-a -> <code>slot_not_registered</code> (za ad-slot-not-registered)
-      i <code>wrong_network</code> (za slot-wrong-network).
-    </p>
-  </div>
-
-  <div class="box">
-    <h2>Trigger slotRenderEnded (listener test)</h2>
-    <div class="row">
-      <button onclick="__gptStub.emitEmpty();">Emit: empty_response</button>
-      <button onclick="__gptStub.emitUnexpectedSize();">Emit: unexpected_size</button>
-      <button onclick="__gptStub.emitOkSize();">Emit: ok render (no issue expected)</button>
-    </div>
-
-    <p class="small">
-      DevTools → Network → filter <code>ingest</code>.  
-      Ako ne vidiš ponovo event kad klikćeš više puta, to je zbog dedupe (24h).  
-      Rešenje: otvori stranicu sa <code>?t=neki_novi_broj</code> ili obriši localStorage za sajt.
-    </p>
-  </div>
-
 </body>
 </html>
