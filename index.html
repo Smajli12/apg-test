@@ -188,13 +188,50 @@
   <h1>APG Test Page</h1>
 
   <div class="box">
-    <button onclick="__gptStub.emitEmpty()">Emit empty_response</button>
-    <button onclick="__gptStub.emitUnexpectedSize()">Emit unexpected_size</button>
+    <h2>Slots in DOM</h2>
+
+    <div class="slots">
+      <!-- Registered slots -->
+      <div class="slot" id="div-gpt-ad-test-1">
+        Registered<br><span class="small">div-gpt-ad-test-1</span>
+      </div>
+
+      <div class="slot" id="div-gpt-ad-test-2">
+        Registered<br><span class="small">div-gpt-ad-test-2</span>
+      </div>
+
+      <div class="slot" id="slot-wrong-network">
+        <span class="bad">WRONG NETWORK</span><br>
+        <span class="small">slot-wrong-network</span>
+      </div>
+
+      <div class="slot" id="gpt-ad-footer">
+        Registered<br><span class="small">gpt-ad-footer</span>
+      </div>
+
+      <!-- ❌ Intentionally NOT registered in GPT -->
+      <div class="slot" id="ad-slot-not-registered">
+        <span class="warn">NOT registered in GPT</span><br>
+        <span class="small">ad-slot-not-registered</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Trigger slotRenderEnded (listener test)</h2>
+    <div class="row">
+      <button onclick="__gptStub.emitEmpty()">Emit empty_response</button>
+      <button onclick="__gptStub.emitUnexpectedSize()">Emit unexpected_size</button>
+    </div>
   </div>
 
   <p class="small">
     DevTools → Network → filter <code>ingest</code><br/>
-    Proveri da je <b>tagVersion = start-1.0.4</b> i da se popunjavaju revenue kolone.
+    Očekuj:
+    <code>wrong_network</code>,
+    <code>slot_not_registered</code>,
+    <code>empty_response</code>,
+    <code>unexpected_size</code>
   </p>
 </body>
 </html>
