@@ -2,207 +2,230 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>APG Real-World Test</title>
+  <title>APG Multi-Issue Test Page</title>
   <style>
-    body{font-family:system-ui;margin:24px}
-    .slot{border:1px dashed #999;padding:12px;margin:8px}
+    body { font-family: system-ui; margin: 24px; }
+    .slot {
+      border: 1px dashed #999;
+      padding: 12px;
+      margin: 12px 0;
+      min-height: 90px;
+    }
   </style>
 </head>
 
 <body>
-  <h1>APG Test Page</h1>
+  <h1>APG Multi-Issue Test</h1>
+  <p>This page intentionally triggers multiple ad delivery issues.</p>
 
-  <div class="slot" id="div-gpt-ad-test-1">Registered</div>
-  <div class="slot" id="div-gpt-ad-test-2">Registered</div>
+  <!-- SLOT 1: registered but WRONG NETWORK + EMPTY RESPONSE -->
+  <div class="slot" id="div-gpt-ad-wrong-network">
+    Slot: wrong network + empty response
+  </div>
 
+  <!-- SLOT 2: registered but UNEXPECTED SIZE -->
+  <div class="slot" id="div-gpt-ad-unexpected-size">
+    Slot: unexpected size
+  </div>
+
+  <!-- SLOT 3: NOT REGISTERED -->
   <div class="slot" id="div-gpt-ad-not-registered">
     ❌ NOT REGISTERED IN GPT
   </div>
 
-  <!-- GPT STUB -->
+  <!-- ========================= -->
+  <!-- GPT STUB (INTENTIONALLY BROKEN) -->
+  <!-- ========================= -->
   <script>
-    (function(){
+    (function () {
+      function makeSlot(id, path, sizes) {
+        return {
+          getSlotElementId() { return id; },
+          getAdUnitPath() { return path; },
+          getSizes() {
+            return sizes.map(sz => ({
+              getWidth() { return sz[0]; },
+              getHeight() { return sz[1]; }
+            }));
+          }
+        };
+      }
+
       const slots = [
-        { id:'div-gpt-ad-test-1', path:'/12345678/test/top' },
-        { id:'div-gpt-ad-test-2', path:'/12345678/test/sidebar' }
+        // WRONG NETWORK + EMPTY RESPONSE
+        makeSlot(
+          'div-gpt-ad-wrong-network',
+          '/99999999/test/wrong-network', // ❌ wrong network id
+          [[300, 250]]
+        ),
+
+        // UNEXPECTED SIZE (defined 728x90, rendered 300x250)
+        makeSlot(
+          'div-gpt-ad-unexpected-size',
+          '/12345678/test/unexpected-size',
+          [[728, 90]]
+        )
       ];
+
       window.googletag = {
-        apiReady:true,
-        cmd:{ push(fn){ fn(); }},
-        pubads(){
+        apiReady: true,
+        cmd: {
+          push(fn) { fn(); }
+        },
+        pubads() {
           return {
-            getSlots(){ return slots.map(s=>({
-              getSlotElementId(){return s.id},
-              getAdUnitPath(){return s.path},
-              getSizes(){return [{getWidth(){return 300},getHeight(){return 250}}]}
-            }))},
-            addEventListener(){}
+            getSlots() {
+              return slots;
+            },
+            addEventListener(event, cb) {
+              if (event === 'slotRenderEnded') {
+                setTimeout(() => {
+                  // EMPTY RESPONSE
+                  cb({
+                    slot: slots[0],
+                    isEmpty: true,
+                    size: null
+                  });
+
+                  // UNEXPECTED SIZE
+                  cb({
+                    slot: slots[1],
+                    isEmpty: false,
+                    size: [300, 250] // ❌ not matching defined 728x90
+                  });
+                }, 1200);
+              }
+            }
           };
         }
       };
     })();
   </script>
 
+  <!-- ========================= -->
   <!-- APG TAG -->
-  <!-- (paste tag from section 1 here) -->
-<script>
-(function () {
-  const CONFIG = {
-    clientId: 'client-001',
-    allowedDomain: 'smajli12.github.io',
-    expectedNetworkId: '12345678',
-    apiEndpoint: 'https://apg-api.onrender.com/ingest',
-    siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
-    version: 'start-1.1.0',
+  <!-- ========================= -->
+  <script>
+  (function () {
+    const CONFIG = {
+      clientId: 'client-001',
+      allowedDomain: 'smajli12.github.io',
+      expectedNetworkId: '12345678',
+      apiEndpoint: 'https://apg-api.onrender.com/ingest',
+      siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
+      version: 'test-multi-issue-1.0.0',
 
-    scanScheduleMs: [3500, 10000, 20000], // retries
-    dedupeTtlMs: 24 * 60 * 60 * 1000,
+      scanScheduleMs: [3500, 10000],
+      dedupeTtlMs: 24 * 60 * 60 * 1000,
 
-    domSlotSelector:
-      'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id^="ad-"],div[id*="ad-slot"],div[id*="gpt-ad"],div[id*="slot"]',
+      domSlotSelector:
+        'div[id^="div-gpt-ad"],div[id^="gpt-"],div[id*="slot"]',
 
-    revenueModel: {
-      currency: 'USD',
-      assumedRpm: 1,
-      assumedImpressionsPerHour: 500
-    }
-  };
-
-  const host = location.hostname;
-  if (!(host === CONFIG.allowedDomain || host.endsWith('.' + CONFIG.allowedDomain))) return;
-
-  function severityFor(t){
-    return ['gpt_not_loaded','wrong_network','slot_not_registered'].includes(t)
-      ? 'high'
-      : ['empty_response','unexpected_size'].includes(t)
-      ? 'medium'
-      : 'low';
-  }
-
-  function estimateRevenueRisk(){
-    const h = (CONFIG.revenueModel.assumedImpressionsPerHour / 1000) * CONFIG.revenueModel.assumedRpm;
-    return {
-      estimationCurrency: CONFIG.revenueModel.currency,
-      assumedRpm: CONFIG.revenueModel.assumedRpm,
-      assumedImpressionsPerHour: CONFIG.revenueModel.assumedImpressionsPerHour,
-      estimatedHourlyRevenueRisk: Math.round(h * 100) / 100,
-      estimatedDailyRevenueRisk: Math.round(h * 24 * 100) / 100,
-      estimationMethod: 'conservative_time_based_risk',
-      revenueAssumptionsNote: '500 imps/hour, $1 RPM, conservative baseline'
+      revenueModel: {
+        currency: 'USD',
+        assumedRpm: 1,
+        assumedImpressionsPerHour: 500
+      }
     };
-  }
 
-  function issueKey(p){
-    return [
-      CONFIG.clientId,
-      p.issueType,
-      p.pageUrl,
-      p.slotId || ''
-    ].join('|').slice(0,220);
-  }
+    const host = location.hostname;
+    if (!(host === CONFIG.allowedDomain || host.endsWith('.' + CONFIG.allowedDomain))) return;
 
-  function shouldSend(p){
-    try {
-      const k = issueKey(p);
-      const prev = localStorage.getItem(k);
-      if (prev && Date.now() - Number(prev) < CONFIG.dedupeTtlMs) return false;
-      localStorage.setItem(k, String(Date.now()));
-      return true;
-    } catch {
-      return true;
-    }
-  }
-
-  function sendIssue(issue){
-    const payload = Object.assign({
-      clientId: CONFIG.clientId,
-      host: location.hostname,
-      pageUrl: location.href,
-      timestamp: new Date().toISOString(),
-      tagVersion: CONFIG.version,
-      userAgent: navigator.userAgent
-    }, issue, { severity: severityFor(issue.issueType) }, estimateRevenueRisk());
-
-    if (!shouldSend(payload)) return;
-
-    fetch(CONFIG.apiEndpoint,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${CONFIG.siteToken}`,
-        'X-APG-Tag-Version':CONFIG.version
-      },
-      body:JSON.stringify(payload),
-      keepalive:true
-    }).catch(()=>{});
-  }
-
-  function scan(attempt, delayMs){
-    if (!window.googletag || !googletag.apiReady) {
-      if (attempt === CONFIG.scanScheduleMs.length - 1) {
-        sendIssue({ issueType:'gpt_not_loaded', scanAttempt:attempt+1, scanDelayMs:delayMs });
-      }
-      return;
+    function severityFor(t) {
+      return ['gpt_not_loaded','wrong_network','slot_not_registered'].includes(t)
+        ? 'high'
+        : ['empty_response','unexpected_size'].includes(t)
+        ? 'medium'
+        : 'low';
     }
 
-    const domIds = Array.from(document.querySelectorAll(CONFIG.domSlotSelector))
-      .map(el => el.id)
-      .filter(Boolean);
+    function estimateRevenueRisk() {
+      const h = (CONFIG.revenueModel.assumedImpressionsPerHour / 1000) * CONFIG.revenueModel.assumedRpm;
+      return {
+        estimationCurrency: CONFIG.revenueModel.currency,
+        assumedRpm: CONFIG.revenueModel.assumedRpm,
+        assumedImpressionsPerHour: CONFIG.revenueModel.assumedImpressionsPerHour,
+        estimatedHourlyRevenueRisk: Math.round(h * 100) / 100,
+        estimatedDailyRevenueRisk: Math.round(h * 24 * 100) / 100,
+        estimationMethod: 'conservative_time_based_risk'
+      };
+    }
 
-    const gptSlots = googletag.pubads().getSlots();
-    const gptIds = gptSlots.map(s => s.getSlotElementId()).filter(Boolean);
+    function sendIssue(issue) {
+      fetch(CONFIG.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CONFIG.siteToken}`,
+          'X-APG-Tag-Version': CONFIG.version
+        },
+        body: JSON.stringify(Object.assign({
+          clientId: CONFIG.clientId,
+          host: location.hostname,
+          pageUrl: location.href,
+          timestamp: new Date().toISOString(),
+          tagVersion: CONFIG.version
+        }, issue, { severity: severityFor(issue.issueType) }, estimateRevenueRisk())),
+        keepalive: true
+      }).catch(() => {});
+    }
 
-    domIds.forEach(id => {
-      if (gptIds.indexOf(id) === -1) {
-        sendIssue({
-          issueType:'slot_not_registered',
-          slotId:id,
-          scanAttempt:attempt+1,
-          scanDelayMs:delayMs
-        });
-      }
-    });
+    function scan() {
+      if (!window.googletag || !googletag.apiReady) return;
 
-    gptSlots.forEach(s => {
-      const path = s.getAdUnitPath && s.getAdUnitPath();
-      if (!path) return;
-      const nid = path.split('/')[1];
-      if (CONFIG.expectedNetworkId && nid !== CONFIG.expectedNetworkId) {
-        sendIssue({
-          issueType:'wrong_network',
-          slotId:s.getSlotElementId(),
-          adUnitPath:path,
-          networkId:nid
-        });
-      }
-    });
-  }
+      const domIds = Array.from(document.querySelectorAll(CONFIG.domSlotSelector))
+        .map(el => el.id)
+        .filter(Boolean);
 
-  (window.googletag = window.googletag || { cmd: [] }).cmd.push(function(){
-    const pubads = googletag.pubads();
+      const gptSlots = googletag.pubads().getSlots();
+      const gptIds = gptSlots.map(s => s.getSlotElementId());
 
-    pubads.addEventListener('slotRenderEnded', function(e){
-      const slotId = e.slot?.getSlotElementId?.() || '';
-      const adUnitPath = e.slot?.getAdUnitPath?.() || '';
-
-      if (e.isEmpty) {
-        sendIssue({ issueType:'empty_response', slotId, adUnitPath });
-      }
-
-      if (e.size && e.slot?.getSizes) {
-        const rendered = e.size[0] + 'x' + e.size[1];
-        const defined = e.slot.getSizes().map(s => s.getWidth()+'x'+s.getHeight());
-        if (defined.indexOf(rendered) === -1) {
-          sendIssue({ issueType:'unexpected_size', slotId, adUnitPath, renderedSize:rendered });
+      domIds.forEach(id => {
+        if (gptIds.indexOf(id) === -1) {
+          sendIssue({ issueType: 'slot_not_registered', slotId: id });
         }
-      }
-    });
-  });
+      });
 
-  CONFIG.scanScheduleMs.forEach((ms, i) => {
-    setTimeout(() => scan(i, ms), ms);
-  });
-})();
-</script>
+      gptSlots.forEach(s => {
+        const path = s.getAdUnitPath();
+        const nid = path.split('/')[1];
+        if (nid !== CONFIG.expectedNetworkId) {
+          sendIssue({
+            issueType: 'wrong_network',
+            slotId: s.getSlotElementId(),
+            adUnitPath: path,
+            networkId: nid
+          });
+        }
+      });
+    }
+
+    googletag.cmd.push(function () {
+      googletag.pubads().addEventListener('slotRenderEnded', function (e) {
+        const slotId = e.slot.getSlotElementId();
+        const adUnitPath = e.slot.getAdUnitPath();
+
+        if (e.isEmpty) {
+          sendIssue({ issueType: 'empty_response', slotId, adUnitPath });
+        }
+
+        if (e.size) {
+          const rendered = e.size[0] + 'x' + e.size[1];
+          const defined = e.slot.getSizes().map(s => s.getWidth() + 'x' + s.getHeight());
+          if (defined.indexOf(rendered) === -1) {
+            sendIssue({
+              issueType: 'unexpected_size',
+              slotId,
+              adUnitPath,
+              renderedSize: rendered
+            });
+          }
+        }
+      });
+    });
+
+    CONFIG.scanScheduleMs.forEach(ms => setTimeout(scan, ms));
+  })();
+  </script>
 </body>
 </html>
