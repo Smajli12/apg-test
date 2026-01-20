@@ -117,10 +117,10 @@
     expectedNetworkId: '12345678',
     apiEndpoint: 'https://apg-api.onrender.com/ingest',
     siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
-    version: 'start-1.1.3-aggregated-deduped',
+    version: 'start-1.1.4-final',
 
     scanScheduleMs: [3500, 10000, 20000],
-    aggregationWindowMs: 5000,
+    aggregationWindowMs: 4500,
     dedupeTtlMs: 24 * 60 * 60 * 1000,
 
     domSlotSelector:
@@ -142,16 +142,15 @@
   const issueBuffer = [];
   const seenThisLoad = new Set();
   let flushTimer = null;
+  let hasScheduledFlush = false;
 
-  function severityFor(t){
-    return ['gpt_not_loaded','wrong_network','slot_not_registered'].includes(t)
-      ? 'high'
-      : ['empty_response','unexpected_size'].includes(t)
-      ? 'medium'
-      : 'low';
+  function severityFor(type) {
+    if (['gpt_not_loaded','wrong_network','slot_not_registered'].includes(type)) return 'high';
+    if (['empty_response','unexpected_size'].includes(type)) return 'medium';
+    return 'low';
   }
 
-  function estimateRevenueRisk(){
+  function estimateRevenueRisk() {
     const h = (CONFIG.revenueModel.assumedImpressionsPerHour / 1000) *
               CONFIG.revenueModel.assumedRpm;
     return {
@@ -165,7 +164,7 @@
     };
   }
 
-  function dedupeKey(issue){
+  function dedupeKey(issue) {
     return [
       'apg',
       CONFIG.clientId,
@@ -175,7 +174,7 @@
     ].join('|');
   }
 
-  function passesDedupe(issue){
+  function passesCrossPageDedupe(issue) {
     try {
       const k = dedupeKey(issue);
       const prev = localStorage.getItem(k);
@@ -187,12 +186,18 @@
     }
   }
 
-  function recordIssue(issue){
+  function scheduleFlushOnce() {
+    if (hasScheduledFlush) return;
+    hasScheduledFlush = true;
+    flushTimer = setTimeout(flushIssues, CONFIG.aggregationWindowMs);
+  }
+
+  function recordIssue(issue) {
     const memKey = issue.issueType + '|' + (issue.slotId || '');
     if (seenThisLoad.has(memKey)) return;
     seenThisLoad.add(memKey);
 
-    if (!passesDedupe(issue)) return;
+    if (!passesCrossPageDedupe(issue)) return;
 
     issueBuffer.push({
       issueType: issue.issueType,
@@ -206,13 +211,14 @@
       severity: severityFor(issue.issueType)
     });
 
-    if (!flushTimer) {
-      flushTimer = setTimeout(flushIssues, CONFIG.aggregationWindowMs);
-    }
+    scheduleFlushOnce();
   }
 
-  function flushIssues(){
-    if (!issueBuffer.length) return;
+  function flushIssues() {
+    hasScheduledFlush = false;
+    flushTimer = null;
+
+    if (!Array.isArray(issueBuffer) || issueBuffer.length === 0) return;
 
     const payload = Object.assign({
       clientId: CONFIG.clientId,
@@ -223,11 +229,10 @@
       pageLoadId,
       issueType: 'multiple_issues',
       severity: issueBuffer.some(i => i.severity === 'high') ? 'high' : 'medium',
-      issues: issueBuffer.slice(0, 20)
+      issues: issueBuffer.slice()
     }, estimateRevenueRisk());
 
     issueBuffer.length = 0;
-    flushTimer = null;
 
     fetch(CONFIG.apiEndpoint, {
       method: 'POST',
@@ -241,7 +246,7 @@
     }).catch(() => {});
   }
 
-  function scan(attempt){
+  function scan(attempt) {
     if (!window.googletag || !googletag.apiReady) {
       if (attempt === CONFIG.scanScheduleMs.length - 1) {
         recordIssue({
@@ -261,7 +266,7 @@
     const gptIds = slots.map(s => s.getSlotElementId());
 
     domIds.forEach(id => {
-      if (gptIds.indexOf(id) === -1) {
+      if (!gptIds.includes(id)) {
         recordIssue({
           issueType: 'slot_not_registered',
           slotId: id,
@@ -288,18 +293,18 @@
     });
   }
 
-  function attachGptListeners(){
-    (window.googletag = window.googletag || { cmd: [] }).cmd.push(function(){
+  function attachGptListeners() {
+    (window.googletag = window.googletag || { cmd: [] }).cmd.push(function () {
       const pubads = googletag.pubads();
       if (pubads.__apgBound) return;
       pubads.__apgBound = true;
 
-      pubads.addEventListener('slotRenderEnded', function(e){
+      pubads.addEventListener('slotRenderEnded', function (e) {
         const slotId = e.slot?.getSlotElementId?.() || '';
         const adUnitPath = e.slot?.getAdUnitPath?.() || '';
 
         if (e.isEmpty) {
-          recordIssue({ issueType:'empty_response', slotId, adUnitPath });
+          recordIssue({ issueType: 'empty_response', slotId, adUnitPath });
         }
 
         if (e.size && e.slot?.getSizes) {
@@ -307,9 +312,9 @@
           const defined = e.slot.getSizes().map(
             s => s.getWidth() + 'x' + s.getHeight()
           );
-          if (defined.indexOf(rendered) === -1) {
+          if (!defined.includes(rendered)) {
             recordIssue({
-              issueType:'unexpected_size',
+              issueType: 'unexpected_size',
               slotId,
               adUnitPath,
               renderedSize: rendered,
@@ -321,7 +326,7 @@
     });
   }
 
-  function init(){
+  function init() {
     attachGptListeners();
     CONFIG.scanScheduleMs.forEach((ms, i) => {
       setTimeout(() => scan(i), ms);
