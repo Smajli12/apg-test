@@ -113,11 +113,15 @@
 (function () {
   const CONFIG = {
     clientId: 'client-001',
+    siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
+
     allowedDomain: 'smajli12.github.io',
     expectedNetworkId: '12345678',
+
+    // 👇 OVO JE APPS SCRIPT WEB APP URL
     apiEndpoint: 'https://script.google.com/macros/s/AKfycbx-PFUcYyEXUR7Thw8kqzAWpCX74XY-4c-Si9myS69jloI9Vir_5YaZLXGCUiUquxMn/exec',
-    siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
-    version: 'start-1.1.4-final',
+
+    version: 'start-1.1.5-appscript',
 
     scanScheduleMs: [3500, 10000, 20000],
     aggregationWindowMs: 4500,
@@ -141,8 +145,7 @@
 
   const issueBuffer = [];
   const seenThisLoad = new Set();
-  let flushTimer = null;
-  let hasScheduledFlush = false;
+  let flushScheduled = false;
 
   function severityFor(type) {
     if (['gpt_not_loaded','wrong_network','slot_not_registered'].includes(type)) return 'high';
@@ -164,32 +167,29 @@
     };
   }
 
-  function dedupeKey(issue) {
-    return [
-      'apg',
-      CONFIG.clientId,
-      location.href,
-      issue.issueType,
-      issue.slotId || ''
-    ].join('|');
-  }
-
-  function passesCrossPageDedupe(issue) {
+  function crossPageDedupe(issue) {
     try {
-      const k = dedupeKey(issue);
-      const prev = localStorage.getItem(k);
+      const key = [
+        'apg',
+        CONFIG.clientId,
+        location.href,
+        issue.issueType,
+        issue.slotId || ''
+      ].join('|');
+
+      const prev = localStorage.getItem(key);
       if (prev && Date.now() - Number(prev) < CONFIG.dedupeTtlMs) return false;
-      localStorage.setItem(k, String(Date.now()));
+      localStorage.setItem(key, String(Date.now()));
       return true;
     } catch {
       return true;
     }
   }
 
-  function scheduleFlushOnce() {
-    if (hasScheduledFlush) return;
-    hasScheduledFlush = true;
-    flushTimer = setTimeout(flushIssues, CONFIG.aggregationWindowMs);
+  function scheduleFlush() {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    setTimeout(flushIssues, CONFIG.aggregationWindowMs);
   }
 
   function recordIssue(issue) {
@@ -197,7 +197,7 @@
     if (seenThisLoad.has(memKey)) return;
     seenThisLoad.add(memKey);
 
-    if (!passesCrossPageDedupe(issue)) return;
+    if (!crossPageDedupe(issue)) return;
 
     issueBuffer.push({
       issueType: issue.issueType,
@@ -211,17 +211,16 @@
       severity: severityFor(issue.issueType)
     });
 
-    scheduleFlushOnce();
+    scheduleFlush();
   }
 
   function flushIssues() {
-    hasScheduledFlush = false;
-    flushTimer = null;
-
-    if (!Array.isArray(issueBuffer) || issueBuffer.length === 0) return;
+    flushScheduled = false;
+    if (!issueBuffer.length) return;
 
     const payload = Object.assign({
       clientId: CONFIG.clientId,
+      siteToken: CONFIG.siteToken,
       host: location.hostname,
       pageUrl: location.href,
       timestamp: new Date().toISOString(),
@@ -236,10 +235,9 @@
 
     fetch(CONFIG.apiEndpoint, {
       method: 'POST',
+      mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.siteToken}`,
-        'X-APG-Tag-Version': CONFIG.version
+        'Content-Type': 'text/plain'
       },
       body: JSON.stringify(payload),
       keepalive: true
