@@ -112,16 +112,15 @@
 <script>
 (function () {
   const CONFIG = {
-    clientId: 'client-001',
+    clientId: 'client_001',
     siteToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudC0wMDEiLCJpYXQiOjE3NjcyMDc4NjAsImV4cCI6MTc5ODc0Mzg2MH0.75Fih1agPeA_QTK3u3qpydbLuMAfr4_TqeoApKB6tAY',
 
     allowedDomain: 'smajli12.github.io',
     expectedNetworkId: '12345678',
 
-    // 👇 OVO JE APPS SCRIPT WEB APP URL
     apiEndpoint: 'https://script.google.com/macros/s/AKfycbx-PFUcYyEXUR7Thw8kqzAWpCX74XY-4c-Si9myS69jloI9Vir_5YaZLXGCUiUquxMn/exec',
 
-    version: 'start-1.1.5-appscript',
+    version: 'start-1.1.6-appscript',
 
     scanScheduleMs: [3500, 10000, 20000],
     aggregationWindowMs: 4500,
@@ -236,9 +235,7 @@
     fetch(CONFIG.apiEndpoint, {
       method: 'POST',
       mode: 'no-cors',
-      headers: {
-        'Content-Type': 'text/plain'
-      },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
       keepalive: true
     }).catch(() => {});
@@ -260,7 +257,9 @@
       .map(el => el.id)
       .filter(Boolean);
 
-    const slots = googletag.pubads().getSlots();
+    const slots = googletag.pubads().getSlots()
+      .filter(s => !s.getOutOfPage?.()); // 🚫 ignore OOP slots
+
     const gptIds = slots.map(s => s.getSlotElementId());
 
     domIds.forEach(id => {
@@ -298,6 +297,9 @@
       pubads.__apgBound = true;
 
       pubads.addEventListener('slotRenderEnded', function (e) {
+        // 🚫 Ignore out-of-page / interstitial slots
+        if (e.slot?.getOutOfPage?.()) return;
+
         const slotId = e.slot?.getSlotElementId?.() || '';
         const adUnitPath = e.slot?.getAdUnitPath?.() || '';
 
