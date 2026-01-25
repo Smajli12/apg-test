@@ -118,9 +118,10 @@
     allowedDomain: 'smajli12.github.io',
     expectedNetworkId: '12345678',
 
-    apiEndpoint: 'https://script.google.com/macros/s/AKfycbx-PFUcYyEXUR7Thw8kqzAWpCX74XY-4c-Si9myS69jloI9Vir_5YaZLXGCUiUquxMn/exec',
+    apiEndpoint:
+      'https://script.google.com/macros/s/AKfycbx-PFUcYyEXUR7Thw8kqzAWpCX74XY-4c-Si9myS69jloI9Vir_5YaZLXGCUiUquxMn/exec',
 
-    version: 'start-1.1.6-appscript',
+    version: 'start-1.1.7-appscript',
 
     scanScheduleMs: [3500, 10000, 20000],
     aggregationWindowMs: 4500,
@@ -147,14 +148,16 @@
   let flushScheduled = false;
 
   function severityFor(type) {
-    if (['gpt_not_loaded','wrong_network','slot_not_registered'].includes(type)) return 'high';
-    if (['empty_response','unexpected_size'].includes(type)) return 'medium';
+    if (['gpt_not_loaded', 'wrong_network', 'slot_not_registered'].includes(type)) return 'high';
+    if (['empty_response', 'unexpected_size', 'defined_without_dom'].includes(type)) return 'medium';
     return 'low';
   }
 
   function estimateRevenueRisk() {
-    const h = (CONFIG.revenueModel.assumedImpressionsPerHour / 1000) *
-              CONFIG.revenueModel.assumedRpm;
+    const h =
+      (CONFIG.revenueModel.assumedImpressionsPerHour / 1000) *
+      CONFIG.revenueModel.assumedRpm;
+
     return {
       estimationCurrency: CONFIG.revenueModel.currency,
       assumedRpm: CONFIG.revenueModel.assumedRpm,
@@ -217,18 +220,21 @@
     flushScheduled = false;
     if (!issueBuffer.length) return;
 
-    const payload = Object.assign({
-      clientId: CONFIG.clientId,
-      siteToken: CONFIG.siteToken,
-      host: location.hostname,
-      pageUrl: location.href,
-      timestamp: new Date().toISOString(),
-      tagVersion: CONFIG.version,
-      pageLoadId,
-      issueType: 'multiple_issues',
-      severity: issueBuffer.some(i => i.severity === 'high') ? 'high' : 'medium',
-      issues: issueBuffer.slice()
-    }, estimateRevenueRisk());
+    const payload = Object.assign(
+      {
+        clientId: CONFIG.clientId,
+        siteToken: CONFIG.siteToken,
+        host: location.hostname,
+        pageUrl: location.href,
+        timestamp: new Date().toISOString(),
+        tagVersion: CONFIG.version,
+        pageLoadId,
+        issueType: 'multiple_issues',
+        severity: issueBuffer.some(i => i.severity === 'high') ? 'high' : 'medium',
+        issues: issueBuffer.slice()
+      },
+      estimateRevenueRisk()
+    );
 
     issueBuffer.length = 0;
 
@@ -257,11 +263,14 @@
       .map(el => el.id)
       .filter(Boolean);
 
-    const slots = googletag.pubads().getSlots()
-      .filter(s => !s.getOutOfPage?.()); // 🚫 ignore OOP slots
+    const slots = googletag
+      .pubads()
+      .getSlots()
+      .filter(s => !s.getOutOfPage?.());
 
     const gptIds = slots.map(s => s.getSlotElementId());
 
+    // DOM ➜ GPT mismatch
     domIds.forEach(id => {
       if (!gptIds.includes(id)) {
         recordIssue({
@@ -273,8 +282,9 @@
       }
     });
 
+    // Wrong network
     slots.forEach(s => {
-      const path = s.getAdUnitPath && s.getAdUnitPath();
+      const path = s.getAdUnitPath?.();
       if (!path) return;
       const nid = path.split('/')[1];
       if (CONFIG.expectedNetworkId && nid !== CONFIG.expectedNetworkId) {
@@ -288,6 +298,23 @@
         });
       }
     });
+
+    // GPT ➜ DOM mismatch (ghost slots)
+    if (attempt === CONFIG.scanScheduleMs.length - 1) {
+      slots.forEach(s => {
+        const slotId = s.getSlotElementId?.();
+        if (!slotId) return;
+        if (!document.getElementById(slotId)) {
+          recordIssue({
+            issueType: 'defined_without_dom',
+            slotId,
+            adUnitPath: s.getAdUnitPath?.(),
+            scanAttempt: attempt + 1,
+            scanDelayMs: CONFIG.scanScheduleMs[attempt]
+          });
+        }
+      });
+    }
   }
 
   function attachGptListeners() {
@@ -297,7 +324,6 @@
       pubads.__apgBound = true;
 
       pubads.addEventListener('slotRenderEnded', function (e) {
-        // 🚫 Ignore out-of-page / interstitial slots
         if (e.slot?.getOutOfPage?.()) return;
 
         const slotId = e.slot?.getSlotElementId?.() || '';
@@ -309,9 +335,10 @@
 
         if (e.size && e.slot?.getSizes) {
           const rendered = e.size[0] + 'x' + e.size[1];
-          const defined = e.slot.getSizes().map(
-            s => s.getWidth() + 'x' + s.getHeight()
-          );
+          const defined = e.slot
+            .getSizes()
+            .map(s => s.getWidth() + 'x' + s.getHeight());
+
           if (!defined.includes(rendered)) {
             recordIssue({
               issueType: 'unexpected_size',
@@ -333,7 +360,9 @@
     });
   }
 
-  try { init(); } catch (_) {}
+  try {
+    init();
+  } catch (_) {}
 })();
 </script>
 
