@@ -2,9 +2,6 @@
 <html>
 <head>
   <title>APG War Lab</title>
-
-   <!-- ENGINE PRVI -->
-  <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
   
   <!-- CONFIG -->
   <script>
@@ -16,14 +13,19 @@
   };
   </script>
 
-  <!-- GPT -->
+ <!-- GPT -->
   <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
-  
+
+  <!-- ENGINE -->
+  <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
+
 </head>
 
 <body>
-<h1>APG War Lab</h1>
 
+<h1>APG Dedupe Test</h1>
+
+<div id="div-gpt-ad-slot1" style="width:300px;height:250px;background:#eee;"></div>
 <div id="div-gpt-ad-slot2" style="width:300px;height:250px;background:#ddd;"></div>
 
 <script>
@@ -31,10 +33,11 @@ window.googletag = window.googletag || {cmd:[]};
 
 googletag.cmd.push(function() {
 
-  googletag.defineSlot('/13051489/test', [300,250], 'div-gpt-ad-slot1')
+  // NAMERNO POGREŠAN NETWORK
+  googletag.defineSlot('/99999/test', [300,250], 'div-gpt-ad-slot1')
     .addService(googletag.pubads());
 
-  googletag.defineSlot('/13051489/test2', [300,250], 'div-gpt-ad-slot2')
+  googletag.defineSlot('/99999/test2', [300,250], 'div-gpt-ad-slot2')
     .addService(googletag.pubads());
 
   googletag.enableServices();
