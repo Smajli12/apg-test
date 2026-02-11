@@ -2,7 +2,23 @@
 <html>
 <head>
   <title>APG War Lab</title>
+
+  <!-- GPT -->
   <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+
+  <!-- APG CONFIG (ovo glumi GTM) -->
+  <script>
+  window.APG_CONFIG = {
+    clientId: "client_003",
+    siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MjU3ODAsImV4cCI6MTc3MjAzNTM4MH0.b_YPII_6Hpq2NNwBLJynPbaS3CDkoruMTTUveZsIwnY",
+    allowedDomain: "smajli12.github.io",
+    expectedNetworkId: "13051489"
+  };
+  </script>
+
+  <!-- APG ENGINE -->
+ <script src="https://adpulse-guard.github.io/apg/engine.min.js" async></script>
+
 </head>
 <body>
 
@@ -18,7 +34,9 @@
 window.googletag = window.googletag || {cmd:[]};
 
 googletag.cmd.push(function() {
-  googletag.defineSlot('/13051489/test', [300,250], 'div-gpt-ad-slot1').addService(googletag.pubads());
+  googletag.defineSlot('/13051489/test', [300,250], 'div-gpt-ad-slot1')
+    .addService(googletag.pubads());
+
   googletag.enableServices();
 });
 </script>
