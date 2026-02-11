@@ -3,9 +3,6 @@
 <head>
   <title>APG War Lab</title>
   
-  <!-- GPT PRVI -->
-  <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
-
   <!-- CONFIG -->
   <script>
   window.APG_CONFIG = {
@@ -16,20 +13,24 @@
   };
   </script>
 
-  <!-- ENGINE PRE GPT -->
-  <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
-
   <!-- GPT -->
+  <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+
+   <!-- ENGINE SA DELAY -->
+  <script>
+  setTimeout(function() {
+    var s = document.createElement("script");
+    s.src = "https://adpulse-guard.github.io/adpulse-guard/engine.js";
+    document.head.appendChild(s);
+  }, 3000);
+  </script>
+  
 </head>
 
 <body>
+<h1>APG War Lab</h1>
 
-<h1>AdPulse Guard War Lab</h1>
-
-<!-- Slot 1 -->
-<div id="div-gpt-ad-slot1" style="width:300px;height:250px;background:#eee;"></div>
-
-<!-- Slot 2 -->
+<div id="div-gpt-ad-slot2" style="width:300px;height:250px;background:#ddd;"></div>
 
 <script>
 window.googletag = window.googletag || {cmd:[]};
@@ -43,6 +44,7 @@ googletag.cmd.push(function() {
     .addService(googletag.pubads());
 
   googletag.enableServices();
+
 });
 </script>
 
