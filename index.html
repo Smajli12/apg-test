@@ -34,7 +34,10 @@
 window.googletag = window.googletag || {cmd:[]};
 
 googletag.cmd.push(function() {
+
   googletag.defineSlot('/13051489/test', [300,250], 'div-gpt-ad-slot1')
+    .addService(googletag.pubads());
+
   googletag.defineSlot('/13051489/test2', [300,250], 'div-gpt-ad-slot2')
     .addService(googletag.pubads());
 
