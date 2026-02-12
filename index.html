@@ -8,7 +8,7 @@
   window.APG_CONFIG = {
     clientId: "client_003",
     siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
-    allowedDomain: "smajli12.github.io",
+    allowedDomain: location.hostname,
     expectedNetworkId: "13051489"
   };
   </script>
@@ -20,23 +20,26 @@
   <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
 
   <style>
-    body { font-family: Arial; padding: 40px; background:#f9fafb; }
+    body { font-family: Arial; padding: 40px; background:#f3f4f6; }
+    h1 { margin-bottom: 20px; }
     button {
       display:block;
-      margin:10px 0;
-      padding:10px 16px;
+      margin:8px 0;
+      padding:10px 14px;
       border:none;
       border-radius:6px;
       cursor:pointer;
       font-size:14px;
+      color:white;
     }
-    .red { background:#dc2626;color:white; }
-    .orange { background:#f59e0b;color:white; }
-    .yellow { background:#eab308;color:black; }
-    .blue { background:#2563eb;color:white; }
-    .purple { background:#7c3aed;color:white; }
-    .brown { background:#92400e;color:white; }
-    #slot { width:300px;height:250px;background:#ddd;margin-top:30px;}
+    .red { background:#dc2626; }
+    .orange { background:#f59e0b; }
+    .yellow { background:#eab308; color:black; }
+    .blue { background:#2563eb; }
+    .purple { background:#7c3aed; }
+    .brown { background:#92400e; }
+    .gray { background:#374151; }
+    #ad-area { margin-top:30px; }
   </style>
 </head>
 
@@ -50,62 +53,129 @@
 <button class="blue" onclick="gptFail()">GPT Not Loaded</button>
 <button class="purple" onclick="slotNotRegistered()">Slot Not Registered</button>
 <button class="brown" onclick="definedWithoutDom()">Defined Without DOM</button>
+<button class="gray" onclick="layoutOverlap()">Layout Overlap</button>
 
-<div id="slot"></div>
+<div id="ad-area"></div>
 
 <script>
 window.googletag = window.googletag || {cmd:[]};
 
-function resetSlot() {
-  document.getElementById("slot").innerHTML = "";
+function reset() {
+  document.getElementById("ad-area").innerHTML = "";
+  if (googletag.pubadsReady) {
+    googletag.destroySlots();
+  }
+}
+
+/* Helper: create real slot */
+function createSlot(path, size, id="div-gpt-ad-demo") {
+
+  const container = document.createElement("div");
+  container.id = id;
+  container.style.width = size[0] + "px";
+  container.style.height = size[1] + "px";
+  container.style.background = "#ddd";
+  container.style.marginBottom = "20px";
+
+  document.getElementById("ad-area").appendChild(container);
+
+  googletag.cmd.push(function() {
+    const slot = googletag.defineSlot(path, size, id)
+      .addService(googletag.pubads());
+
+    googletag.enableServices();
+    googletag.display(id);
+  });
 }
 
 /* 1️⃣ WRONG NETWORK */
 function wrongNetwork() {
-  resetSlot();
-  googletag.cmd.push(function() {
-    googletag.defineSlot('/99999/test', [300,250], 'slot')
-      .addService(googletag.pubads());
-    googletag.enableServices();
-  });
+  reset();
+  createSlot('/99999/test', [300,250]);
 }
 
-/* 2️⃣ EMPTY RESPONSE (fake simulation) */
+/* 2️⃣ EMPTY RESPONSE */
 function emptyResponse() {
-  resetSlot();
-  setTimeout(() => {
-    window.__apgManualEmpty = true;
-    console.log("Simulated empty response");
-  }, 1000);
+  reset();
+  createSlot('/13051489/this_path_does_not_exist', [300,250]);
 }
 
 /* 3️⃣ UNEXPECTED SIZE */
 function unexpectedSize() {
-  resetSlot();
-  const el = document.getElementById("slot");
-  el.innerHTML = '<iframe width="728" height="90"></iframe>';
-  console.log("Injected wrong size iframe");
+  reset();
+  createSlot('/13051489/test', [300,250]);
+
+  setTimeout(() => {
+    const el = document.getElementById("div-gpt-ad-demo");
+    el.style.width = "728px";
+    el.style.height = "90px";
+  }, 1500);
 }
 
 /* 4️⃣ GPT NOT LOADED */
 function gptFail() {
   delete window.googletag;
-  console.log("GPT removed");
+  console.log("GPT removed before scan");
 }
 
 /* 5️⃣ SLOT NOT REGISTERED */
 function slotNotRegistered() {
-  resetSlot();
-  document.getElementById("slot").id = "div-gpt-ad-missing";
+  reset();
+
+  const div = document.createElement("div");
+  div.id = "div-gpt-ad-orphan";
+  div.style.width = "300px";
+  div.style.height = "250px";
+  div.style.background = "#ddd";
+  document.getElementById("ad-area").appendChild(div);
 }
 
 /* 6️⃣ DEFINED WITHOUT DOM */
 function definedWithoutDom() {
-  resetSlot();
+  reset();
+
   googletag.cmd.push(function() {
     googletag.defineSlot('/13051489/test', [300,250], 'nonexistent-div')
       .addService(googletag.pubads());
+
     googletag.enableServices();
+  });
+}
+
+/* 7️⃣ LAYOUT OVERLAP */
+function layoutOverlap() {
+  reset();
+
+  const container1 = document.createElement("div");
+  container1.id = "div-gpt-ad-a";
+  container1.style.width = "300px";
+  container1.style.height = "250px";
+  container1.style.background = "#ccc";
+  container1.style.position = "absolute";
+  container1.style.top = "300px";
+  container1.style.left = "100px";
+
+  const container2 = document.createElement("div");
+  container2.id = "div-gpt-ad-b";
+  container2.style.width = "300px";
+  container2.style.height = "250px";
+  container2.style.background = "#aaa";
+  container2.style.position = "absolute";
+  container2.style.top = "350px";
+  container2.style.left = "150px";
+
+  document.getElementById("ad-area").appendChild(container1);
+  document.getElementById("ad-area").appendChild(container2);
+
+  googletag.cmd.push(function() {
+    googletag.defineSlot('/13051489/test1', [300,250], 'div-gpt-ad-a')
+      .addService(googletag.pubads());
+    googletag.defineSlot('/13051489/test2', [300,250], 'div-gpt-ad-b')
+      .addService(googletag.pubads());
+
+    googletag.enableServices();
+    googletag.display('div-gpt-ad-a');
+    googletag.display('div-gpt-ad-b');
   });
 }
 </script>
