@@ -1,48 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>APG War Lab</title>
-  
+  <title>AdPulse Guard – QA Demo</title>
+
   <!-- CONFIG -->
   <script>
   window.APG_CONFIG = {
     clientId: "client_003",
     siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
-    allowedDomain: 'smajli12.github.io',
+    allowedDomain: "smajli12.github.io",
     expectedNetworkId: "13051489"
   };
   </script>
 
- <!-- GPT -->
-<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+  <!-- GPT -->
+  <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
 
   <!-- ENGINE -->
   <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
 
+  <style>
+    body { font-family: Arial; padding: 40px; background:#f9fafb; }
+    button {
+      display:block;
+      margin:10px 0;
+      padding:10px 16px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .red { background:#dc2626;color:white; }
+    .orange { background:#f59e0b;color:white; }
+    .yellow { background:#eab308;color:black; }
+    .blue { background:#2563eb;color:white; }
+    .purple { background:#7c3aed;color:white; }
+    .brown { background:#92400e;color:white; }
+    #slot { width:300px;height:250px;background:#ddd;margin-top:30px;}
+  </style>
 </head>
 
 <body>
 
-<h1>APG Dedupe Test</h1>
-  
-<div id="div-gpt-ad-slot1" style="position:absolute;top:100px;left:100px;width:300px;height:250px;background:red;"></div>
-<div id="div-gpt-ad-slot2" style="position:absolute;top:120px;left:120px;width:300px;height:250px;background:blue;"></div>
+<h1>AdPulse Guard – QA Scenario Lab</h1>
 
+<button class="red" onclick="wrongNetwork()">Wrong Network</button>
+<button class="orange" onclick="emptyResponse()">Empty Response</button>
+<button class="yellow" onclick="unexpectedSize()">Unexpected Size</button>
+<button class="blue" onclick="gptFail()">GPT Not Loaded</button>
+<button class="purple" onclick="slotNotRegistered()">Slot Not Registered</button>
+<button class="brown" onclick="definedWithoutDom()">Defined Without DOM</button>
+
+<div id="slot"></div>
 
 <script>
 window.googletag = window.googletag || {cmd:[]};
 
-googletag.cmd.push(function() {
+function resetSlot() {
+  document.getElementById("slot").innerHTML = "";
+}
 
-  googletag.defineSlot('/13051489/test', [300,250], 'div-gpt-ad-slot1')
-    .addService(googletag.pubads());
+/* 1️⃣ WRONG NETWORK */
+function wrongNetwork() {
+  resetSlot();
+  googletag.cmd.push(function() {
+    googletag.defineSlot('/99999/test', [300,250], 'slot')
+      .addService(googletag.pubads());
+    googletag.enableServices();
+  });
+}
 
-  googletag.defineSlot('/13051489/test2', [300,250], 'div-gpt-ad-slot2')
-    .addService(googletag.pubads());
+/* 2️⃣ EMPTY RESPONSE (fake simulation) */
+function emptyResponse() {
+  resetSlot();
+  setTimeout(() => {
+    window.__apgManualEmpty = true;
+    console.log("Simulated empty response");
+  }, 1000);
+}
 
-  googletag.enableServices();
+/* 3️⃣ UNEXPECTED SIZE */
+function unexpectedSize() {
+  resetSlot();
+  const el = document.getElementById("slot");
+  el.innerHTML = '<iframe width="728" height="90"></iframe>';
+  console.log("Injected wrong size iframe");
+}
 
-});
+/* 4️⃣ GPT NOT LOADED */
+function gptFail() {
+  delete window.googletag;
+  console.log("GPT removed");
+}
+
+/* 5️⃣ SLOT NOT REGISTERED */
+function slotNotRegistered() {
+  resetSlot();
+  document.getElementById("slot").id = "div-gpt-ad-missing";
+}
+
+/* 6️⃣ DEFINED WITHOUT DOM */
+function definedWithoutDom() {
+  resetSlot();
+  googletag.cmd.push(function() {
+    googletag.defineSlot('/13051489/test', [300,250], 'nonexistent-div')
+      .addService(googletag.pubads());
+    googletag.enableServices();
+  });
+}
 </script>
 
 </body>
