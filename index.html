@@ -1,42 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>APG Personal Test</title>
+  <title>APG War Lab</title>
 
+  <!-- =========================
+       🔐 APG CONFIG
+  ========================== -->
   <script>
-  window.APG_CONFIG = {
-    clientId: "client_003",
-    siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
-    allowedDomain: location.hostname,
-    expectedNetworkId: "13051489"
-  };
+    window.APG_CONFIG = {
+      clientId: "client_003",
+      siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
+      allowedDomain: "smajli12.github.io",
+      expectedNetworkId: "13051489"
+    };
   </script>
 
+  <!-- =========================
+       GPT
+  ========================== -->
   <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+
+  <!-- =========================
+       APG ENGINE
+  ========================== -->
   <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
 
-  <style>
-    body { padding:40px; font-family:Arial; }
-  </style>
 </head>
+<body style="font-family:Arial;padding:40px;">
 
-<body>
+  <h1>🧪 APG War Lab</h1>
+  <p>Use this page to test engine behavior.</p>
 
-<h2>APG Personal Test – Wrong Network</h2>
+  <!-- VALID SLOT -->
+  <div id="div-gpt-ad-slot1"
+       style="width:300px;height:250px;background:#eee;margin-bottom:20px;">
+  </div>
 
-<div id="div-gpt-ad-test" style="width:300px;height:250px;background:#ddd;"></div>
+  <!-- SECOND SLOT -->
+  <div id="div-gpt-ad-slot2"
+       style="width:300px;height:250px;background:#ddd;margin-bottom:20px;">
+  </div>
 
-<script>
-window.googletag = window.googletag || {cmd:[]};
+  <!-- DOM ONLY SLOT (for slot_not_registered test) -->
+  <div id="div-gpt-ad-orphan"
+       style="width:300px;height:250px;background:#ccc;margin-bottom:20px;">
+  </div>
 
-googletag.cmd.push(function () {
-  googletag.defineSlot('/99999/test', [300,250], 'div-gpt-ad-test')
-    .addService(googletag.pubads());
+  <script>
+    window.googletag = window.googletag || { cmd: [] };
 
-  googletag.enableServices();
-  googletag.display('div-gpt-ad-test');
-});
-</script>
+    googletag.cmd.push(function() {
+
+      // 🔥 WRONG NETWORK TEST
+      googletag.defineSlot('/99999/test', [300, 250], 'div-gpt-ad-slot1')
+        .addService(googletag.pubads());
+
+      googletag.defineSlot('/99999/test2', [300, 250], 'div-gpt-ad-slot2')
+        .addService(googletag.pubads());
+
+      // NOTE:
+      // div-gpt-ad-orphan intentionally NOT defined
+      // → should trigger slot_not_registered
+
+      googletag.enableServices();
+
+      googletag.display('div-gpt-ad-slot1');
+      googletag.display('div-gpt-ad-slot2');
+    });
+  </script>
 
 </body>
 </html>
