@@ -1,186 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AdPulse Guard – QA Demo (Stable Mode)</title>
+  <title>APG Personal Test</title>
 
-  <!-- CONFIG -->
   <script>
   window.APG_CONFIG = {
     clientId: "client_003",
     siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
     allowedDomain: location.hostname,
-    expectedNetworkId: "13051489",
-    qaMode: true   // 🔥 KLJUČNO
+    expectedNetworkId: "13051489"
   };
   </script>
 
-  <!-- ENGINE -->
+  <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
   <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
 
   <style>
-    body { font-family: Arial; padding: 40px; background:#f3f4f6; }
-    h1 { margin-bottom: 20px; }
-    button {
-      display:block;
-      margin:8px 0;
-      padding:10px 14px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      font-size:14px;
-      color:white;
-    }
-    .red { background:#dc2626; }
-    .orange { background:#f59e0b; }
-    .yellow { background:#eab308; color:black; }
-    .blue { background:#2563eb; }
-    .purple { background:#7c3aed; }
-    .brown { background:#92400e; }
-    .gray { background:#374151; }
-    #stage { margin-top:40px; min-height:200px; }
+    body { padding:40px; font-family:Arial; }
   </style>
 </head>
 
 <body>
 
-<h1>AdPulse Guard – QA Scenario Lab</h1>
+<h2>APG Personal Test – Wrong Network</h2>
 
-<button class="red" onclick="simulateWrongNetwork()">Wrong Network</button>
-<button class="orange" onclick="simulateEmpty()">Empty Response</button>
-<button class="yellow" onclick="simulateUnexpectedSize()">Unexpected Size</button>
-<button class="blue" onclick="simulateGptNotLoaded()">GPT Not Loaded</button>
-<button class="purple" onclick="simulateSlotNotRegistered()">Slot Not Registered</button>
-<button class="brown" onclick="simulateDefinedWithoutDom()">Defined Without DOM</button>
-<button class="gray" onclick="simulateLayoutOverlap()">Layout Overlap</button>
-<hr>
-<button class="gray" onclick="simulateMultiple()">Multiple Issues Demo</button>
-
-<div id="stage"></div>
+<div id="div-gpt-ad-test" style="width:300px;height:250px;background:#ddd;"></div>
 
 <script>
+window.googletag = window.googletag || {cmd:[]};
 
-/* ===================================================== */
-/* QA SIMULATION LAYER – 100% independent from GPT      */
-/* ===================================================== */
+googletag.cmd.push(function () {
+  googletag.defineSlot('/99999/test', [300,250], 'div-gpt-ad-test')
+    .addService(googletag.pubads());
 
-function sendIssue(issue) {
-
-  const payload = {
-    clientId: window.APG_CONFIG.clientId,
-    siteToken: window.APG_CONFIG.siteToken,
-    host: location.hostname,
-    pageUrl: location.href,
-    timestamp: new Date().toISOString(),
-    tagVersion: "qa-simulated",
-    pageLoadId: "qa-" + Date.now(),
-    issueType: "multiple_issues",
-    severity: issue.severity || "medium",
-    issues: [issue],
-    estimatedHourlyRevenueRisk: 0.5,
-    estimatedDailyRevenueRisk: 12,
-    estimationCurrency: "USD"
-  };
-
-  fetch(window.APG_CONFIG.apiEndpoint || 
-    "https://script.google.com/macros/s/AKfycbxAD4aNij0ApHx21r68hq5TLx2k2r3VT9_obEe7I-EX_l3JGDQSnrY84LcA4QG8Ldf2ig/exec",
-  {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=UTF-8" },
-    body: JSON.stringify(payload)
-  });
-
-  console.log("QA simulated:", issue.issueType);
-}
-
-/* ========================= */
-/* SINGLE ISSUE SIMULATION   */
-/* ========================= */
-
-function simulateWrongNetwork() {
-  sendIssue({
-    issueType: "wrong_network",
-    slotId: "div-gpt-ad-demo",
-    adUnitPath: "/99999/test",
-    networkId: "99999",
-    severity: "high"
-  });
-}
-
-function simulateEmpty() {
-  sendIssue({
-    issueType: "empty_response",
-    slotId: "div-gpt-ad-demo",
-    adUnitPath: "/13051489/test",
-    severity: "medium"
-  });
-}
-
-function simulateUnexpectedSize() {
-  sendIssue({
-    issueType: "unexpected_size",
-    slotId: "div-gpt-ad-demo",
-    adUnitPath: "/13051489/test",
-    renderedSize: "728x90",
-    definedSizes: ["300x250"],
-    severity: "medium"
-  });
-}
-
-function simulateGptNotLoaded() {
-  sendIssue({
-    issueType: "gpt_not_loaded",
-    severity: "high"
-  });
-}
-
-function simulateSlotNotRegistered() {
-  sendIssue({
-    issueType: "slot_not_registered",
-    slotId: "div-gpt-ad-orphan",
-    severity: "high"
-  });
-}
-
-function simulateDefinedWithoutDom() {
-  sendIssue({
-    issueType: "defined_without_dom",
-    slotId: "div-gpt-ad-missing",
-    adUnitPath: "/13051489/test",
-    severity: "medium"
-  });
-}
-
-function simulateLayoutOverlap() {
-  sendIssue({
-    issueType: "layout_overlap",
-    slotId: "div-gpt-ad-a ↔ div-gpt-ad-b",
-    severity: "medium"
-  });
-}
-
-/* ========================= */
-/* MULTIPLE ISSUES DEMO      */
-/* ========================= */
-
-function simulateMultiple() {
-  sendIssue({
-    issueType: "wrong_network",
-    slotId: "div-gpt-ad-1",
-    adUnitPath: "/99999/test",
-    networkId: "99999",
-    severity: "high"
-  });
-
-  setTimeout(() => {
-    sendIssue({
-      issueType: "empty_response",
-      slotId: "div-gpt-ad-2",
-      adUnitPath: "/13051489/test",
-      severity: "medium"
-    });
-  }, 500);
-}
-
+  googletag.enableServices();
+  googletag.display('div-gpt-ad-test');
+});
 </script>
 
 </body>
