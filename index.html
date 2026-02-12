@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AdPulse Guard – QA Demo (Single Scenario Mode)</title>
+  <title>AdPulse Guard – QA Demo (Stable Mode)</title>
 
   <!-- CONFIG -->
   <script>
@@ -9,12 +9,10 @@
     clientId: "client_003",
     siteToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6ImNsaWVudF8wMDMiLCJpYXQiOjE3NzA4MzcwMTcsImV4cCI6MTc3MjA0NjYxN30.uIjzRs1q_YkwcAw8RC5bwI8u2wfQyTz2rdD6xYvlR6c",
     allowedDomain: location.hostname,
-    expectedNetworkId: "13051489"
+    expectedNetworkId: "13051489",
+    qaMode: true   // 🔥 KLJUČNO
   };
   </script>
-
-  <!-- GPT -->
-  <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
 
   <!-- ENGINE -->
   <script src="https://adpulse-guard.github.io/adpulse-guard/engine.js"></script>
@@ -39,7 +37,7 @@
     .purple { background:#7c3aed; }
     .brown { background:#92400e; }
     .gray { background:#374151; }
-    #stage { margin-top:40px; min-height:300px; position:relative; }
+    #stage { margin-top:40px; min-height:200px; }
   </style>
 </head>
 
@@ -47,157 +45,142 @@
 
 <h1>AdPulse Guard – QA Scenario Lab</h1>
 
-<button class="red" onclick="scenario_wrongNetwork()">Wrong Network</button>
-<button class="orange" onclick="scenario_emptyResponse()">Empty Response</button>
-<button class="yellow" onclick="scenario_unexpectedSize()">Unexpected Size</button>
-<button class="blue" onclick="scenario_gptNotLoaded()">GPT Not Loaded</button>
-<button class="purple" onclick="scenario_slotNotRegistered()">Slot Not Registered</button>
-<button class="brown" onclick="scenario_definedWithoutDom()">Defined Without DOM</button>
-<button class="gray" onclick="scenario_layoutOverlap()">Layout Overlap</button>
+<button class="red" onclick="simulateWrongNetwork()">Wrong Network</button>
+<button class="orange" onclick="simulateEmpty()">Empty Response</button>
+<button class="yellow" onclick="simulateUnexpectedSize()">Unexpected Size</button>
+<button class="blue" onclick="simulateGptNotLoaded()">GPT Not Loaded</button>
+<button class="purple" onclick="simulateSlotNotRegistered()">Slot Not Registered</button>
+<button class="brown" onclick="simulateDefinedWithoutDom()">Defined Without DOM</button>
+<button class="gray" onclick="simulateLayoutOverlap()">Layout Overlap</button>
 <hr>
-<button class="gray" onclick="scenario_multiple()">Multiple Issues Demo</button>
+<button class="gray" onclick="simulateMultiple()">Multiple Issues Demo</button>
 
 <div id="stage"></div>
 
 <script>
-window.googletag = window.googletag || {cmd:[]};
 
-function hardReset() {
-  document.getElementById("stage").innerHTML = "";
+/* ===================================================== */
+/* QA SIMULATION LAYER – 100% independent from GPT      */
+/* ===================================================== */
 
-  if (window.googletag && googletag.apiReady) {
-    googletag.destroySlots();
-  }
+function sendIssue(issue) {
+
+  const payload = {
+    clientId: window.APG_CONFIG.clientId,
+    siteToken: window.APG_CONFIG.siteToken,
+    host: location.hostname,
+    pageUrl: location.href,
+    timestamp: new Date().toISOString(),
+    tagVersion: "qa-simulated",
+    pageLoadId: "qa-" + Date.now(),
+    issueType: "multiple_issues",
+    severity: issue.severity || "medium",
+    issues: [issue],
+    estimatedHourlyRevenueRisk: 0.5,
+    estimatedDailyRevenueRisk: 12,
+    estimationCurrency: "USD"
+  };
+
+  fetch(window.APG_CONFIG.apiEndpoint || 
+    "https://script.google.com/macros/s/AKfycbxAD4aNij0ApHx21r68hq5TLx2k2r3VT9_obEe7I-EX_l3JGDQSnrY84LcA4QG8Ldf2ig/exec",
+  {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+    body: JSON.stringify(payload)
+  });
+
+  console.log("QA simulated:", issue.issueType);
 }
 
-/* Helper */
-function createSlot(path, size, id) {
-  const div = document.createElement("div");
-  div.id = id;
-  div.style.width = size[0] + "px";
-  div.style.height = size[1] + "px";
-  div.style.background = "#ddd";
-  div.style.marginBottom = "20px";
-  document.getElementById("stage").appendChild(div);
+/* ========================= */
+/* SINGLE ISSUE SIMULATION   */
+/* ========================= */
 
-  googletag.cmd.push(function () {
-    const slot = googletag.defineSlot(path, size, id)
-      .addService(googletag.pubads());
+function simulateWrongNetwork() {
+  sendIssue({
+    issueType: "wrong_network",
+    slotId: "div-gpt-ad-demo",
+    adUnitPath: "/99999/test",
+    networkId: "99999",
+    severity: "high"
+  });
+}
 
-    googletag.enableServices();
-    googletag.display(id);
+function simulateEmpty() {
+  sendIssue({
+    issueType: "empty_response",
+    slotId: "div-gpt-ad-demo",
+    adUnitPath: "/13051489/test",
+    severity: "medium"
+  });
+}
+
+function simulateUnexpectedSize() {
+  sendIssue({
+    issueType: "unexpected_size",
+    slotId: "div-gpt-ad-demo",
+    adUnitPath: "/13051489/test",
+    renderedSize: "728x90",
+    definedSizes: ["300x250"],
+    severity: "medium"
+  });
+}
+
+function simulateGptNotLoaded() {
+  sendIssue({
+    issueType: "gpt_not_loaded",
+    severity: "high"
+  });
+}
+
+function simulateSlotNotRegistered() {
+  sendIssue({
+    issueType: "slot_not_registered",
+    slotId: "div-gpt-ad-orphan",
+    severity: "high"
+  });
+}
+
+function simulateDefinedWithoutDom() {
+  sendIssue({
+    issueType: "defined_without_dom",
+    slotId: "div-gpt-ad-missing",
+    adUnitPath: "/13051489/test",
+    severity: "medium"
+  });
+}
+
+function simulateLayoutOverlap() {
+  sendIssue({
+    issueType: "layout_overlap",
+    slotId: "div-gpt-ad-a ↔ div-gpt-ad-b",
+    severity: "medium"
   });
 }
 
 /* ========================= */
-/* SINGLE SCENARIO MODE     */
+/* MULTIPLE ISSUES DEMO      */
 /* ========================= */
 
-function scenario_wrongNetwork() {
-  hardReset();
-  createSlot('/99999/test', [300,250], 'div-gpt-ad-demo');
-}
-
-function scenario_emptyResponse() {
-  hardReset();
-  createSlot('/13051489/non_existing_path_12345', [300,250], 'div-gpt-ad-demo');
-}
-
-function scenario_unexpectedSize() {
-  hardReset();
-  createSlot('/13051489/test', [300,250], 'div-gpt-ad-demo');
+function simulateMultiple() {
+  sendIssue({
+    issueType: "wrong_network",
+    slotId: "div-gpt-ad-1",
+    adUnitPath: "/99999/test",
+    networkId: "99999",
+    severity: "high"
+  });
 
   setTimeout(() => {
-    const el = document.getElementById("div-gpt-ad-demo");
-    el.style.width = "728px";
-    el.style.height = "90px";
-  }, 2000);
+    sendIssue({
+      issueType: "empty_response",
+      slotId: "div-gpt-ad-2",
+      adUnitPath: "/13051489/test",
+      severity: "medium"
+    });
+  }, 500);
 }
 
-function scenario_gptNotLoaded() {
-  hardReset();
-  delete window.googletag;
-  console.log("GPT removed before scan.");
-}
-
-function scenario_slotNotRegistered() {
-  hardReset();
-
-  const div = document.createElement("div");
-  div.id = "div-gpt-ad-orphan";
-  div.style.width = "300px";
-  div.style.height = "250px";
-  div.style.background = "#ddd";
-  document.getElementById("stage").appendChild(div);
-}
-
-function scenario_definedWithoutDom() {
-  hardReset();
-
-  googletag.cmd.push(function () {
-    googletag.defineSlot('/13051489/test', [300,250], 'nonexistent-div')
-      .addService(googletag.pubads());
-    googletag.enableServices();
-  });
-}
-
-function scenario_layoutOverlap() {
-  hardReset();
-
-  const a = document.createElement("div");
-  a.id = "div-gpt-ad-a";
-  a.style.width = "300px";
-  a.style.height = "250px";
-  a.style.background = "#ccc";
-  a.style.position = "absolute";
-  a.style.top = "200px";
-  a.style.left = "100px";
-
-  const b = document.createElement("div");
-  b.id = "div-gpt-ad-b";
-  b.style.width = "300px";
-  b.style.height = "250px";
-  b.style.background = "#aaa";
-  b.style.position = "absolute";
-  b.style.top = "230px";
-  b.style.left = "130px";
-
-  document.getElementById("stage").appendChild(a);
-  document.getElementById("stage").appendChild(b);
-
-  googletag.cmd.push(function () {
-    googletag.defineSlot('/13051489/test1', [300,250], 'div-gpt-ad-a')
-      .addService(googletag.pubads());
-    googletag.defineSlot('/13051489/test2', [300,250], 'div-gpt-ad-b')
-      .addService(googletag.pubads());
-
-    googletag.enableServices();
-    googletag.display('div-gpt-ad-a');
-    googletag.display('div-gpt-ad-b');
-  });
-}
-
-/* ========================= */
-/* MULTIPLE ISSUES DEMO     */
-/* ========================= */
-
-function scenario_multiple() {
-  hardReset();
-
-  // 1 wrong network
-  createSlot('/99999/test', [300,250], 'div-gpt-ad-1');
-
-  // 1 empty response
-  createSlot('/13051489/non_existing_path', [300,250], 'div-gpt-ad-2');
-
-  // 1 orphan DOM
-  const orphan = document.createElement("div");
-  orphan.id = "div-gpt-ad-orphan";
-  orphan.style.width = "300px";
-  orphan.style.height = "250px";
-  orphan.style.background = "#ddd";
-  document.getElementById("stage").appendChild(orphan);
-}
 </script>
 
 </body>
